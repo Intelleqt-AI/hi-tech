@@ -11,42 +11,54 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useEmployees } from '@/hooks/useSupabaseData';
 import { useToast } from '@/hooks/use-toast';
+import useFetch from '@/hooks/useFetch';
+import { usePost } from '@/hooks/usePost';
+import { usePut } from '@/hooks/usePut';
 
 interface Loan {
-  id: string;
-  employee_id: string;
+  id: number;
+  staff_member: number;
+  staff_member_name: string;
   loan_type: string;
-  original_amount: number;
-  outstanding_balance: number;
-  monthly_payment: number;
+  amount: string;
+  term_type: string;
+  term_duration: number;
   start_date: string;
-  end_date: string | null;
-  status: string;
-  notes: string | null;
-  employees?: { first_name: string; last_name: string };
+  interest_rate?: string;
+  notes?: string;
+}
+
+interface StaffMember {
+  id: number;
+  clock_number: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  employee_type: string;
+  department: string;
+  position: string;
+  email: string;
 }
 
 interface Bonus {
-  id: string;
-  employee_id: string;
-  bonus_amount: number;
-  bonus_reason: string;
-  created_at: string;
-  payroll_period_id: string | null;
+  id: number;
+  staff_member: number;
+  staff_member_name: string;
+  amount: string;
+  reason?: string;
   status: string;
-  employees?: { first_name: string; last_name: string };
-  payroll_periods?: { period_name: string };
+  created_at: string;
 }
 
 const LoansAndBonusesTab = () => {
-  const { data: employees } = useEmployees();
   const { toast } = useToast();
-  
-  const [loans, setLoans] = useState<Loan[]>([]);
-  const [bonuses, setBonuses] = useState<Bonus[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const { data: staffMembers } = useFetch<StaffMember[]>('staff/members/');
+  const { data: loansData, isLoading: loansLoading, refetch: refetchLoans } = useFetch<Loan[]>('staff/loans/');
+  const { data: bonusesData, isLoading: bonusesLoading, refetch: refetchBonuses } = useFetch<Bonus[]>('staff/bonuses/');
+  const { mutateAsync: postLoan } = usePost();
+  const { mutateAsync: putLoan } = usePut();
   const [activeSection, setActiveSection] = useState('loans');
   const [showLoanDialog, setShowLoanDialog] = useState(false);
   const [showBonusDialog, setShowBonusDialog] = useState(false);
@@ -58,6 +70,7 @@ const LoansAndBonusesTab = () => {
     loan_type: '',
     original_amount: '',
     interest_rate: '0',
+    term_type: 'monthly',
     term_months: '',
     start_date: new Date().toISOString().split('T')[0],
     notes: ''
@@ -72,96 +85,48 @@ const LoansAndBonusesTab = () => {
   });
 
   useEffect(() => {
-    fetchLoansAndBonuses();
+    // Initialization logic if needed
   }, []);
 
-  const fetchLoansAndBonuses = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch loans
-      const { data: loansData, error: loansError } = await supabase
-        .from('employee_loans')
-        .select(`
-          *,
-          employees (first_name, last_name)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (loansError) throw loansError;
-
-      // Fetch bonuses
-      const { data: bonusesData, error: bonusesError } = await supabase
-        .from('payroll_bonuses')
-        .select(`
-          *,
-          employees (first_name, last_name),
-          payroll_periods (period_name)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (bonusesError) throw bonusesError;
-
-      setLoans(loansData || []);
-      setBonuses(bonusesData || []);
-    } catch (error) {
-      console.error('Error fetching loans and bonuses:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch loans and bonuses",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const calculateMonthlyPayment = (amount: number, interestRate: number, termMonths: number) => {
+  const calculateInstallment = (amount: number, interestRate: number, duration: number, termType: string) => {
     if (interestRate === 0) {
-      return amount / termMonths;
+      return amount / duration;
     }
-    
-    const monthlyRate = interestRate / 100 / 12;
-    const payment = (amount * monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / 
-                   (Math.pow(1 + monthlyRate, termMonths) - 1);
+
+    // Adjust rate and periods based on term type
+    const periodsPerYear = termType === 'fortnightly' ? 26 : 12;
+    const periodicRate = interestRate / 100 / periodsPerYear;
+
+    const payment = (amount * periodicRate * Math.pow(1 + periodicRate, duration)) /
+      (Math.pow(1 + periodicRate, duration) - 1);
     return payment;
   };
 
   const handleLoanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    try {
-      const amount = parseFloat(loanForm.original_amount);
-      const interestRate = parseFloat(loanForm.interest_rate);
-      const termMonths = parseInt(loanForm.term_months);
-      const monthlyPayment = calculateMonthlyPayment(amount, interestRate, termMonths);
-      
-      const endDate = new Date(loanForm.start_date);
-      endDate.setMonth(endDate.getMonth() + termMonths);
 
+    try {
       const loanData = {
-        employee_id: loanForm.employee_id,
+        staff_member: parseInt(loanForm.employee_id),
         loan_type: loanForm.loan_type,
-        original_amount: amount,
-        outstanding_balance: amount,
-        monthly_payment: monthlyPayment,
+        amount: loanForm.original_amount,
+        interest_rate: loanForm.interest_rate,
+        term_type: loanForm.term_type,
+        term_duration: parseInt(loanForm.term_months),
         start_date: loanForm.start_date,
-        end_date: endDate.toISOString().split('T')[0],
-        status: 'active',
-        notes: loanForm.notes || null
+        notes: loanForm.notes
       };
 
       if (editingLoan) {
-        const { error } = await supabase
-          .from('employee_loans')
-          .update(loanData)
-          .eq('id', editingLoan.id);
-        if (error) throw error;
+        await putLoan({
+          url: `staff/loans/${editingLoan.id}/`,
+          data: loanData
+        });
       } else {
-        const { error } = await supabase
-          .from('employee_loans')
-          .insert([loanData]);
-        if (error) throw error;
+        await postLoan({
+          url: 'staff/loans/',
+          data: loanData
+        });
       }
 
       toast({
@@ -176,11 +141,12 @@ const LoansAndBonusesTab = () => {
         loan_type: '',
         original_amount: '',
         interest_rate: '0',
+        term_type: 'monthly',
         term_months: '',
         start_date: new Date().toISOString().split('T')[0],
         notes: ''
       });
-      fetchLoansAndBonuses();
+      refetchLoans();
     } catch (error) {
       console.error('Error saving loan:', error);
       toast({
@@ -193,27 +159,25 @@ const LoansAndBonusesTab = () => {
 
   const handleBonusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const bonusData = {
-        employee_id: bonusForm.employee_id,
-        bonus_amount: parseFloat(bonusForm.bonus_amount),
-        bonus_reason: bonusForm.bonus_reason,
-        payroll_period_id: bonusForm.payroll_period_id || null,
+        staff_member: parseInt(bonusForm.employee_id),
+        amount: bonusForm.bonus_amount,
+        reason: bonusForm.bonus_reason,
         status: bonusForm.status
       };
 
       if (editingBonus) {
-        const { error } = await supabase
-          .from('payroll_bonuses')
-          .update(bonusData)
-          .eq('id', editingBonus.id);
-        if (error) throw error;
+        await putLoan({
+          url: `staff/bonuses/${editingBonus.id}/`,
+          data: bonusData
+        });
       } else {
-        const { error } = await supabase
-          .from('payroll_bonuses')
-          .insert([bonusData]);
-        if (error) throw error;
+        await postLoan({
+          url: 'staff/bonuses/',
+          data: bonusData
+        });
       }
 
       toast({
@@ -230,7 +194,7 @@ const LoansAndBonusesTab = () => {
         payroll_period_id: '',
         status: 'pending'
       });
-      fetchLoansAndBonuses();
+      refetchBonuses();
     } catch (error) {
       console.error('Error saving bonus:', error);
       toast({
@@ -241,42 +205,17 @@ const LoansAndBonusesTab = () => {
     }
   };
 
-  const markLoanAsPaid = async (loanId: string) => {
-    try {
-      const { error } = await supabase
-        .from('employee_loans')
-        .update({ 
-          status: 'paid_off',
-          outstanding_balance: 0
-        })
-        .eq('id', loanId);
 
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Loan marked as paid off",
-      });
-      
-      fetchLoansAndBonuses();
-    } catch (error) {
-      console.error('Error updating loan:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update loan",
-        variant: "destructive",
-      });
-    }
-  };
 
   const editLoan = (loan: Loan) => {
     setEditingLoan(loan);
     setLoanForm({
-      employee_id: loan.employee_id,
+      employee_id: loan.staff_member.toString(),
       loan_type: loan.loan_type,
-      original_amount: loan.original_amount.toString(),
-      interest_rate: '0', // We don't store interest rate separately
-      term_months: '', // Calculate from dates if needed
+      original_amount: loan.amount,
+      interest_rate: loan.interest_rate || '0',
+      term_type: loan.term_type || 'monthly',
+      term_months: loan.term_duration.toString(),
       start_date: loan.start_date,
       notes: loan.notes || ''
     });
@@ -286,10 +225,10 @@ const LoansAndBonusesTab = () => {
   const editBonus = (bonus: Bonus) => {
     setEditingBonus(bonus);
     setBonusForm({
-      employee_id: bonus.employee_id,
-      bonus_amount: bonus.bonus_amount.toString(),
-      bonus_reason: bonus.bonus_reason,
-      payroll_period_id: bonus.payroll_period_id || '',
+      employee_id: bonus.staff_member.toString(),
+      bonus_amount: bonus.amount,
+      bonus_reason: bonus.reason || '',
+      payroll_period_id: '',
       status: bonus.status
     });
     setShowBonusDialog(true);
@@ -306,9 +245,12 @@ const LoansAndBonusesTab = () => {
     return <Badge variant={variants[status] || 'outline'}>{status.replace('_', ' ')}</Badge>;
   };
 
-  if (loading) {
+  if (loansLoading || bonusesLoading) {
     return <div className="p-6">Loading...</div>;
   }
+
+  const loans = loansData || [];
+  const bonuses = bonusesData || [];
 
   return (
     <div className="space-y-6">
@@ -317,11 +259,10 @@ const LoansAndBonusesTab = () => {
         <Button
           variant={activeSection === 'loans' ? 'default' : 'outline'}
           onClick={() => setActiveSection('loans')}
-          className={`flex items-center gap-2 ${
-            activeSection === 'loans' 
-              ? 'bg-orange-500 hover:bg-orange-600 text-white' 
-              : 'hover:bg-orange-50 hover:text-orange-600 hover:border-orange-300'
-          }`}
+          className={`flex items-center gap-2 ${activeSection === 'loans'
+            ? 'bg-orange-500 hover:bg-orange-600 text-white'
+            : 'hover:bg-orange-50 hover:text-orange-600 hover:border-orange-300'
+            }`}
         >
           <DollarSign className="h-4 w-4" />
           Loans
@@ -329,11 +270,10 @@ const LoansAndBonusesTab = () => {
         <Button
           variant={activeSection === 'bonuses' ? 'default' : 'outline'}
           onClick={() => setActiveSection('bonuses')}
-          className={`flex items-center gap-2 ${
-            activeSection === 'bonuses' 
-              ? 'bg-orange-500 hover:bg-orange-600 text-white' 
-              : 'hover:bg-orange-50 hover:text-orange-600 hover:border-orange-300'
-          }`}
+          className={`flex items-center gap-2 ${activeSection === 'bonuses'
+            ? 'bg-orange-500 hover:bg-orange-600 text-white'
+            : 'hover:bg-orange-50 hover:text-orange-600 hover:border-orange-300'
+            }`}
         >
           <Users className="h-4 w-4" />
           Bonuses
@@ -363,17 +303,17 @@ const LoansAndBonusesTab = () => {
                 <form onSubmit={handleLoanSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="employee_id">Staff Member</Label>
-                    <Select 
-                      value={loanForm.employee_id} 
+                    <Select
+                      value={loanForm.employee_id}
                       onValueChange={(value) => setLoanForm(prev => ({ ...prev, employee_id: value }))}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select staff member" />
                       </SelectTrigger>
                       <SelectContent>
-                        {employees?.map((emp) => (
-                          <SelectItem key={emp.id} value={emp.id}>
-                            {emp.first_name} {emp.last_name}
+                        {staffMembers?.map((staff) => (
+                          <SelectItem key={staff.id} value={staff.id.toString()}>
+                            {staff.full_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -419,7 +359,22 @@ const LoansAndBonusesTab = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="term_months">Term (Months)</Label>
+                      <Label htmlFor="term_type">Term Type</Label>
+                      <Select
+                        value={loanForm.term_type}
+                        onValueChange={(value) => setLoanForm(prev => ({ ...prev, term_type: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select term type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="term_months">Term Duration</Label>
                       <Input
                         id="term_months"
                         type="number"
@@ -429,16 +384,17 @@ const LoansAndBonusesTab = () => {
                         required
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="start_date">Start Date</Label>
-                      <Input
-                        id="start_date"
-                        type="date"
-                        value={loanForm.start_date}
-                        onChange={(e) => setLoanForm(prev => ({ ...prev, start_date: e.target.value }))}
-                        required
-                      />
-                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="start_date">Start Date</Label>
+                    <Input
+                      id="start_date"
+                      type="date"
+                      value={loanForm.start_date}
+                      onChange={(e) => setLoanForm(prev => ({ ...prev, start_date: e.target.value }))}
+                      required
+                    />
                   </div>
 
                   <div>
@@ -454,10 +410,11 @@ const LoansAndBonusesTab = () => {
                   {loanForm.original_amount && loanForm.term_months && (
                     <div className="p-3 bg-muted rounded-lg">
                       <p className="text-sm font-medium">
-                        Monthly Payment: R{calculateMonthlyPayment(
+                        Installment Amount: R{calculateInstallment(
                           parseFloat(loanForm.original_amount) || 0,
                           parseFloat(loanForm.interest_rate) || 0,
-                          parseInt(loanForm.term_months) || 1
+                          parseInt(loanForm.term_months) || 1,
+                          loanForm.term_type
                         ).toFixed(2)}
                       </p>
                     </div>
@@ -483,11 +440,10 @@ const LoansAndBonusesTab = () => {
                 <thead className="bg-accent">
                   <tr>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Staff Member</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Loan Type</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Date Issued</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Amount</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Monthly Deduction</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Outstanding</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Status</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Term</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Actions</th>
                   </tr>
                 </thead>
@@ -495,28 +451,17 @@ const LoansAndBonusesTab = () => {
                   {loans.map((loan) => (
                     <tr key={loan.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                       <td className="py-2 px-4 text-xs font-medium">
-                        {loan.employees?.first_name} {loan.employees?.last_name}
+                        {loan.staff_member_name}
                       </td>
+                      <td className="py-2 px-4 text-xs">{loan.loan_type}</td>
                       <td className="py-2 px-4 text-xs">{new Date(loan.start_date).toLocaleDateString()}</td>
-                      <td className="py-2 px-4 text-xs">R{loan.original_amount.toFixed(2)}</td>
-                      <td className="py-2 px-4 text-xs">R{loan.monthly_payment.toFixed(2)}</td>
-                      <td className="py-2 px-4 text-xs">R{loan.outstanding_balance.toFixed(2)}</td>
-                      <td className="py-2 px-4">{getStatusBadge(loan.status)}</td>
+                      <td className="py-2 px-4 text-xs">R{parseFloat(loan.amount).toFixed(2)}</td>
+                      <td className="py-2 px-4 text-xs">{loan.term_duration} {loan.term_type}</td>
                       <td className="py-2 px-4">
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline" onClick={() => editLoan(loan)} className="text-xs">
                             <Edit className="h-3 w-3" />
                           </Button>
-                          {loan.status === 'active' && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => markLoanAsPaid(loan.id)}
-                              className="text-xs"
-                            >
-                              Mark Paid
-                            </Button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -558,17 +503,17 @@ const LoansAndBonusesTab = () => {
                 <form onSubmit={handleBonusSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="employee_id">Staff Member</Label>
-                    <Select 
-                      value={bonusForm.employee_id} 
+                    <Select
+                      value={bonusForm.employee_id}
                       onValueChange={(value) => setBonusForm(prev => ({ ...prev, employee_id: value }))}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select staff member" />
                       </SelectTrigger>
                       <SelectContent>
-                        {employees?.map((emp) => (
-                          <SelectItem key={emp.id} value={emp.id}>
-                            {emp.first_name} {emp.last_name}
+                        {staffMembers?.map((staff) => (
+                          <SelectItem key={staff.id} value={staff.id.toString()}>
+                            {staff.full_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -601,8 +546,8 @@ const LoansAndBonusesTab = () => {
 
                   <div>
                     <Label htmlFor="status">Status</Label>
-                    <Select 
-                      value={bonusForm.status} 
+                    <Select
+                      value={bonusForm.status}
                       onValueChange={(value) => setBonusForm(prev => ({ ...prev, status: value }))}
                     >
                       <SelectTrigger>
@@ -639,7 +584,6 @@ const LoansAndBonusesTab = () => {
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Date Awarded</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Amount</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Reason</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Pay Period</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Status</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Actions</th>
                   </tr>
@@ -648,12 +592,11 @@ const LoansAndBonusesTab = () => {
                   {bonuses.map((bonus) => (
                     <tr key={bonus.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                       <td className="py-2 px-4 text-xs font-medium">
-                        {bonus.employees?.first_name} {bonus.employees?.last_name}
+                        {bonus.staff_member_name}
                       </td>
                       <td className="py-2 px-4 text-xs">{new Date(bonus.created_at).toLocaleDateString()}</td>
-                      <td className="py-2 px-4 text-xs">R{bonus.bonus_amount.toFixed(2)}</td>
-                      <td className="py-2 px-4 text-xs">{bonus.bonus_reason}</td>
-                      <td className="py-2 px-4 text-xs">{bonus.payroll_periods?.period_name || 'Not assigned'}</td>
+                      <td className="py-2 px-4 text-xs">R{parseFloat(bonus.amount).toFixed(2)}</td>
+                      <td className="py-2 px-4 text-xs">{bonus.reason}</td>
                       <td className="py-2 px-4">{getStatusBadge(bonus.status)}</td>
                       <td className="py-2 px-4">
                         <div className="flex gap-2">

@@ -8,23 +8,39 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
-import { BarChart3, ShoppingCart, Factory, Shield, Package, Users, TrendingUp, Settings, Building, LogOut } from 'lucide-react';
+import { BarChart3, ShoppingCart, Factory, Shield, Package, Users, TrendingUp, Settings, Building, LogOut, ChevronRight, HandCoins } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-const AppSidebar = ({ activeView, setActiveView }) => {
-  const { signOut } = useAuth()
+const AppSidebar = () => {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    // { id: 'crm', label: 'Clients', icon: Building },
-    // { id: 'orders', label: 'Orders', icon: ShoppingCart },
-    { id: 'staff', label: 'Staff', icon: Users },
-    // { id: 'operations', label: 'Operations', icon: Factory },
-    // { id: 'finance', label: 'Finance', icon: TrendingUp },
-    // { id: 'reports', label: 'Reporting', icon: BarChart3 },
-    // { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'staff', label: 'Staff', icon: Users, path: '/staff' },
+    {
+      id: 'payroll', label: 'Payroll', icon: HandCoins, items: [
+        { id: 'general-payroll', label: 'General Payroll', path: '/payroll/general' },
+        { id: 'weekend-payroll', label: 'Weekend Payroll', path: '/payroll/weekend' },
+      ]
+    },
   ];
+
+  const isActive = (path) => {
+    if (!path) return false;
+    return location.pathname === path;
+  };
+
+  const isGroupActive = (items) => {
+    return items.some(item => isActive(item.path));
+  };
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar w-64">
@@ -36,19 +52,50 @@ const AppSidebar = ({ activeView, setActiveView }) => {
           <SidebarGroupContent className="px-4 py-2">
             <SidebarMenu>
               {menuItems.map(item => (
-                <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton
-                    onClick={() => setActiveView(item.id)}
-                    className={`w-full justify-start py-3 px-4 rounded-lg transition-all duration-200 ${
-                      activeView === item.id
+                item.items ? (
+                  <Collapsible key={item.id} asChild defaultOpen={isGroupActive(item.items)} className="group/collapsible">
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton tooltip={item.label}>
+                          <item.icon className="h-5 w-5 mr-3 flex-shrink-0" />
+                          <span className="font-medium">{item.label}</span>
+                          <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub className="ml-[1.65rem] border-l border-sidebar-border px-0">
+                          {item.items.map(subItem => (
+                            <SidebarMenuSubItem key={subItem.id}>
+                              <SidebarMenuSubButton
+                                onClick={() => navigate(subItem.path)}
+                                className={`w-full justify-start py-2 px-4 rounded-lg transition-all duration-200 cursor-pointer ${isActive(subItem.path)
+                                  ? 'bg-white text-sidebar hover:bg-white hover:text-sidebar'
+                                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                                  }`}
+                              >
+                                <span>{subItem.label}</span>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                ) : (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      onClick={() => navigate(item.path)}
+                      className={`w-full justify-start py-3 px-4 pl-2 rounded-lg transition-all duration-200 ${isActive(item.path)
                         ? 'bg-white text-sidebar hover:bg-white hover:text-sidebar'
                         : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                    }`}
-                  >
-                    <item.icon className="h-5 w-5 mr-3 flex-shrink-0" />
-                    <span className="font-medium">{item.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                        }`}
+                    >
+                      <item.icon className="h-5 w-5 mr-3 flex-shrink-0" />
+                      <span className="font-medium">{item.label}</span>
+
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -65,3 +112,5 @@ const AppSidebar = ({ activeView, setActiveView }) => {
 };
 
 export default AppSidebar;
+
+

@@ -64,7 +64,7 @@ const calculatePayPeriods = () => {
   return periods[1];
 };
 
-const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
+const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
@@ -606,4 +606,5 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
   );
 };
 
-export default PayrollTab;
+export default WeekendPayrollTab;
+

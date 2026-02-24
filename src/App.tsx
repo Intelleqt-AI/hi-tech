@@ -1,13 +1,19 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import Index from "./pages/Index";
 import AuthPage from "./components/AuthPage";
 import NotFound from "./pages/NotFound";
+import WeekendPayroll from "./pages/WeekendPayroll";
+import GeneralPayroll from "./pages/GeneralPayroll";
+import StaffPage from "./pages/Staff";
+import Dashboard from "./pages/Dashboard";
+import Layout from "./components/Layout";
+import TimeAttendanceTab from "./components/staff/TimeAttendanceTab";
+import LoansAndBonusesTab from "./components/staff/LoansAndBonusesTab";
+import StaffDirectory from "./components/staff/StaffDirectory";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,7 +26,7 @@ const queryClient = new QueryClient({
 });
 
 const AppContent = () => {
-  const { user, loading  } = useAuth();
+  const { user, loading } = useAuth();
 
 
   if (loading) {
@@ -44,7 +50,18 @@ const AppContent = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Index />} />
+        <Route element={<Layout />}>
+          <Route path="/" element={<Navigate to="/staff" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/staff" element={<StaffPage />}>
+            <Route index element={<Navigate to="directory" replace />} />
+            <Route path="directory" element={<StaffDirectory />} />
+            <Route path="attendance" element={<TimeAttendanceTab />} />
+            <Route path="loans" element={<LoansAndBonusesTab />} />
+          </Route>
+          <Route path="/payroll/general" element={<GeneralPayroll />} />
+          <Route path="/payroll/weekend" element={<WeekendPayroll />} />
+        </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
@@ -64,3 +81,4 @@ const App = () => (
 );
 
 export default App;
+

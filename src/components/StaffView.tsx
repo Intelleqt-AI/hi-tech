@@ -1,60 +1,41 @@
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import StaffDirectory from './staff/StaffDirectory';
-import TimeAttendanceTab from './staff/TimeAttendanceTab';
-import PayrollTab from './staff/PayrollTab';
-import RunPayrollFlow from './staff/RunPayrollFlow';
-import LoansAndBonusesTab from './staff/LoansAndBonusesTab';
-import { useQuery } from '@tanstack/react-query';
-import { fetchEntries } from '@/lib/Api';
+import React from 'react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 
 const StaffView = () => {
-  const [activeTab, setActiveTab] = useState('time-attendance');
-  const [showRunPayroll, setShowRunPayroll] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  if (showRunPayroll) {
-    return (
-      <RunPayrollFlow
-        onBack={() => setShowRunPayroll(false)}
-        onComplete={() => {
-          setShowRunPayroll(false);
-          setActiveTab('payroll');
-        }}
-      />
-    );
-  }
+  // Determine active tab based on current path
+  const getActiveTab = () => {
+    const path = location.pathname;
+    if (path.includes('/staff/attendance')) return 'attendance';
+    if (path.includes('/staff/loans')) return 'loans';
+    if (path.includes('/staff/directory')) return 'directory';
+    return 'directory'; // default
+  };
+
+  const handleTabChange = (value: string) => {
+    navigate(`/staff/${value}`);
+  };
 
   return (
     <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full clean-tabs">
+      <Tabs value={getActiveTab()} onValueChange={handleTabChange} className="w-full clean-tabs">
         <TabsList>
-          <TabsTrigger value="time-attendance">Time & Attendance</TabsTrigger>
-          <TabsTrigger value="payroll">Payroll</TabsTrigger>
-          <TabsTrigger value="loans-bonuses">Loans & Bonuses</TabsTrigger>
-          <TabsTrigger value="run-payroll" disabled>
-            Run Payroll
-          </TabsTrigger>
+          <TabsTrigger value="attendance">Time & Attendance</TabsTrigger>
+          <TabsTrigger value="loans">Loans & Bonuses</TabsTrigger>
           <TabsTrigger value="directory">Staff Directory</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="time-attendance" className="mt-4">
-          <TimeAttendanceTab />
-        </TabsContent>
-
-        <TabsContent value="payroll" className="mt-4">
-          <PayrollTab onRunPayroll={() => setShowRunPayroll(true)} />
-        </TabsContent>
-
-        <TabsContent value="loans-bonuses" className="mt-4">
-          <LoansAndBonusesTab />
-        </TabsContent>
-
-        <TabsContent value="directory" className="mt-4">
-          <StaffDirectory />
-        </TabsContent>
       </Tabs>
+
+      <div className="mt-4">
+        <Outlet />
+      </div>
     </div>
   );
 };
 
 export default StaffView;
+
+

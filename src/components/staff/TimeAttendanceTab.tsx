@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,10 +8,15 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Calendar, Clock, AlertTriangle, CheckCircle, Edit, Upload, Users, CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+// import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { usePost } from '@/hooks/usePost';
 import {
   Pagination,
   PaginationContent,
@@ -20,8 +26,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
-import { fetchEntries } from '@/lib/Api';
+import useFetch from '@/hooks/useFetch';
 
 const TimeAttendanceTab = () => {
   const [selectedPeriod, setSelectedPeriod] = useState(2);
@@ -30,25 +35,68 @@ const TimeAttendanceTab = () => {
   const [pasteData, setPasteData] = useState('');
   const [uploadPeriodId, setUploadPeriodId] = useState<number | undefined>(undefined);
   const [dailyStaffData, setDailyStaffData] = useState<any>({});
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [timeRecords, setTimeRecords] = useState<any[]>([]);
+  // const [employees, setEmployees] = useState<any[]>([]);
+  // const [timeRecords, setTimeRecords] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  // const [itemsPerPage] = useState(20);
   const [itemsPerPage] = useState(20);
   const { toast } = useToast();
   const [timeOffRequests, setTimeOffRequests] = useState<any[]>([]);
+  
+  // Upload Modal State
+  const [isCsvMode, setIsCsvMode] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
+  const [formDate, setFormDate] = useState<Date | undefined>(new Date());
+  const [formHours, setFormHours] = useState('');
+  const [csvFile, setCsvFile] = useState<File | null>(null);
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['entries', timeOffRequests?.startDate, timeOffRequests?.endDate, selectedDate],
-    queryFn: () => fetchEntries({ date_from: timeOffRequests?.startDate, date_to: timeOffRequests?.endDate, selectedDate }),
-    enabled: !!timeOffRequests?.startDate && !!timeOffRequests?.endDate,
+  // Fetch API Data
+  const { data: staffList } = useFetch('/staff/members/');
+
+  const { mutate: submitEntry, isPending: isSubmitting } = usePost({
+    onSuccess: () => {
+      toast({ title: 'Success', description: 'Entry submitted successfully' });
+      setShowUploadDialog(false);
+      resetForm();
+      refetch(); // Refresh main table
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to submit entry', variant: 'destructive' });
+    }
   });
+
+  const { mutate: uploadCsv, isPending: isUploading } = usePost({
+    onSuccess: () => {
+      toast({ title: 'Success', description: 'CSV uploaded successfully' });
+      setShowUploadDialog(false);
+      resetForm();
+      refetch(); // Refresh main table
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to upload CSV', variant: 'destructive' });
+    }
+  });
+
+  const resetForm = () => {
+    setSelectedStaffId('');
+    setFormDate(new Date());
+    setFormHours('');
+    setCsvFile(null);
+  };
+
+  const { data, isLoading, isError, error, refetch } = useFetch(
+    selectedDate ? `/atg/attendance/staff-report?date=${selectedDate}` : '',
+    {
+      enabled: !!selectedDate,
+    }
+  );
 
   useEffect(() => {
     setTimeOffRequests(payPeriods.find(p => p.id === selectedPeriod));
   }, [selectedPeriod]);
 
   // Calculate dynamic fortnightly pay periods based on current date
-  const calculatePayPeriods = () => {
+  const payPeriods = React.useMemo(() => {
     const today = new Date();
 
     // Base period starts June 18, 2025 (2-week cycles)
@@ -121,9 +169,7 @@ const TimeAttendanceTab = () => {
     });
 
     return periods;
-  };
-
-  const payPeriods = calculatePayPeriods();
+  }, []);
   
 
   const getStatusColor = (status: string) => {
@@ -197,44 +243,20 @@ const TimeAttendanceTab = () => {
   }, []); // Only run once on mount
 
   // Update selected date when period changes
-  // useEffect(() => {
-  //   if (selectedPeriod && periodDays.length > 0) {
-  //     // Set to first day of the selected period
-  //     const firstDayOfPeriod = periodDays[0]?.date;
-  //     if (firstDayOfPeriod) {
-  //       setSelectedDate(firstDayOfPeriod);
-  //     }
-  //   }
-  // }, [selectedPeriod]); // Run when selectedPeriod changes
-
-
-  // Fetch employees and time records
   useEffect(() => {
-    fetchEmployees();
-    fetchTimeRecords();
-  }, []);
-
-  const fetchEmployees = async () => {
-    try {
-      const { data, error } = await supabase.from('employees').select('*').eq('is_active', true).order('first_name');
-
-      if (error) throw error;
-      setEmployees(data || []);
-    } catch (error) {
-      console.error('Error fetching employees:', error);
+    // Check if 'today' is visible in the current period view
+    const todayDay = periodDays.find(d => d.status === 'today');
+    
+    if (todayDay) {
+      setSelectedDate(todayDay.date);
+    } else if (periodDays.length > 0) {
+      // Default to the last date of the period if today is not in view
+      setSelectedDate(periodDays[periodDays.length - 1].date);
     }
-  };
+  }, [periodDays]);
 
-  const fetchTimeRecords = async () => {
-    try {
-      const { data, error } = await supabase.from('time_records').select('*').order('date', { ascending: false });
 
-      if (error) throw error;
-      setTimeRecords(data || []);
-    } catch (error) {
-      console.error('Error fetching time records:', error);
-    }
-  };
+
 
   const getDayStatusColor = (status: string) => {
     switch (status) {
@@ -254,213 +276,63 @@ const TimeAttendanceTab = () => {
     setCurrentPage(1);
   }, [selectedDate]);
 
-  // Get staff data for selected date - prioritize local data with names
-  const getAllStaffForDate = (date: string) => {
-    // ALWAYS prioritize local data which has names
-    if (dailyStaffData[date] && dailyStaffData[date].length > 0) {
-      return dailyStaffData[date];
-    }
 
-    // Fallback to database time records and match with employee names
-    const dateTimeRecords = timeRecords.filter(record => record.date === date);
-
-    if (dateTimeRecords.length > 0) {
-      const staffData = dateTimeRecords
-        .map(record => {
-          // Find matching employee by ATG clock number or employee_id
-          const employee = employees.find(emp => emp.atg_clock_number === record.atg_clock_number || emp.id === record.employee_id);
-
-          // Only include records that have a matching employee
-          if (!employee) return null;
-
-          return {
-            name: `${employee.first_name} ${employee.last_name}`,
-            hours: record.total_hours ? record.total_hours.toString() : '0',
-            clockNo: record.atg_clock_number || 'Unknown',
-            employeeType: employee.employee_type || 'Unknown',
-          };
-        })
-        .filter(item => item !== null); // Remove null entries
-
-      return staffData;
-    }
-
-    return [];
-  };
 
   const getEntriesByDate = targetDate => {
-    if (!data?.items || !targetDate) return [];
-
-    return data.items.filter(entry => {
-      const entryDate = entry.date_created_utc?.split('T')[0]; // Extract yyyy-mm-dd
-      return entryDate === targetDate;
-    });
+    if (!data?.records || !targetDate) return [];
+    // Since API returns only selected date's records, we only return if target matches
+    if (targetDate === selectedDate) {
+        return data.records;
+    }
+    return [];
   };
 
   // Get paginated staff data
   const getPaginatedStaff = () => {
-    const allStaff = getAllStaffForDate(selectedDate || new Date().toISOString().split('T')[0]);
+    const records = data?.records || [];
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return allStaff.slice(startIndex, endIndex);
+    return records.slice(startIndex, endIndex);
   };
 
   // Calculate pagination info
   const getTotalPages = () => {
-    const allStaff = getAllStaffForDate(selectedDate || new Date().toISOString().split('T')[0]);
-    return Math.ceil(allStaff.length / itemsPerPage);
+    const records = data?.records || [];
+    return Math.ceil(records.length / itemsPerPage);
   };
 
   const totalPages = getTotalPages();
-  const totalStaff = getAllStaffForDate(selectedDate || new Date().toISOString().split('T')[0]).length;
+  const totalStaff = data?.summary?.total_staff || 0;
 
-  const handlePasteUpload = async () => {
-    if (!pasteData.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please paste some data first',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!uploadPeriodId) {
-      toast({
-        title: 'Error',
-        description: 'Please select a payroll period',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      // Get the selected period data
-      const selectedUploadPeriod = payPeriods.find(p => p.id === uploadPeriodId);
-      if (!selectedUploadPeriod) {
-        toast({
-          title: 'Error',
-          description: 'Invalid period selected',
-          variant: 'destructive',
-        });
+  const handleSubmit = () => {
+    if (isCsvMode) {
+      if (!csvFile) {
+        toast({ title: 'Error', description: 'Please select a CSV file', variant: 'destructive' });
         return;
       }
-
-      // Calculate the 14 days for the selected upload period
-      const uploadPeriodDays = [];
-      const startDate = new Date(selectedUploadPeriod.startDate);
-      for (let i = 0; i < 14; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        uploadPeriodDays.push(date.toISOString().split('T')[0]);
-      }
-
-      // Parse the pasted data
-      const lines = pasteData.trim().split('\n');
-      const headers = lines[0].split('\t');
-
-      const timeRecordsToInsert = [];
-      const updatedDailyStaffData = { ...dailyStaffData };
-
-      // Skip first line (headers) and process staff data
-      for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split('\t');
-        if (row.length < 3) continue; // Skip invalid rows
-
-        const staffName = row[0]; // First column is name
-        const section = row[1]; // Second column is section
-        const clockNo = row[row.length - 1]; // Last column is clock number
-
-        // Skip if no name or clock number
-        if (!staffName || !clockNo || staffName.trim() === '' || clockNo.trim() === '') {
-          continue;
-        }
-
-        // Process daily hours (columns 2 to 15 - skipping section column)
-        for (let dayIndex = 0; dayIndex < 14; dayIndex++) {
-          const hours = row[dayIndex + 2]; // +2 to skip name and section columns
-          if (hours && hours.trim() !== '' && hours !== '0' && hours !== '0:00') {
-            const date = uploadPeriodDays[dayIndex];
-            if (date) {
-              // Store in local collection for batch update
-              if (!updatedDailyStaffData[date]) {
-                updatedDailyStaffData[date] = [];
-              }
-              updatedDailyStaffData[date].push({
-                name: staffName,
-                hours: hours,
-                clockNo: clockNo,
-              });
-
-              // Convert hours to decimal for database storage
-              let totalHours = 0;
-              if (hours.includes(':')) {
-                const [hoursStr, minutesStr] = hours.split(':');
-                totalHours = parseInt(hoursStr || '0') + parseInt(minutesStr || '0') / 60;
-              } else {
-                // Handle cases where hours might not be in HH:MM format
-                totalHours = parseFloat(hours) || 0;
-              }
-
-              // Prepare for database insertion
-              timeRecordsToInsert.push({
-                date,
-                atg_clock_number: clockNo,
-                total_hours: totalHours,
-                clock_in: null,
-                clock_out: null,
-              });
-            }
-          }
-        }
-      }
-
-      // Insert into Supabase
-      if (timeRecordsToInsert.length > 0) {
-        const { data, error } = await supabase.from('time_records').upsert(timeRecordsToInsert, {
-          onConflict: 'atg_clock_number,date',
-          ignoreDuplicates: false,
-        });
-
-        if (error) {
-          console.error('Error inserting time records:', error);
-          toast({
-            title: 'Error',
-            description: `Failed to save time records: ${error.message}`,
-            variant: 'destructive',
-          });
-          return;
-        } else {
-          // Update state with all collected data FIRST
-
-          setDailyStaffData(updatedDailyStaffData);
-
-          toast({
-            title: 'Success',
-            description: `Uploaded ${timeRecordsToInsert.length} time records for period ${selectedUploadPeriod.dates}`,
-          });
-
-          // Refresh time records AFTER local state is set
-          setTimeout(() => {
-            fetchTimeRecords();
-          }, 100);
-        }
-      } else {
-        toast({
-          title: 'Warning',
-          description: 'No valid time records found in the pasted data',
-          variant: 'destructive',
-        });
+      const formData = new FormData();
+      formData.append('file', csvFile);
+      
+      uploadCsv({
+        url: '/atg/attendance/upload-csv/',
+        data: formData,
+        config: { headers: { 'Content-Type': 'multipart/form-data' } }
+      });
+    } else {
+      if (!selectedStaffId || !formDate || !formHours) {
+        toast({ title: 'Error', description: 'Please fill in all fields', variant: 'destructive' });
         return;
       }
-
-      setShowUploadDialog(false);
-      setPasteData('');
-    } catch (error) {
-      console.error('Error parsing paste data:', error);
-      toast({
-        title: 'Error',
-        description: `Failed to parse uploaded data: ${error.message}`,
-        variant: 'destructive',
+      
+      const payload = {
+        staff_member: parseInt(selectedStaffId),
+        work_date: format(formDate, 'yyyy-MM-dd'),
+        total_hours: formHours
+      };
+      
+      submitEntry({
+        url: '/atg/attendance/',
+        data: payload
       });
     }
   };
@@ -479,50 +351,98 @@ const TimeAttendanceTab = () => {
                 Upload Hours
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl">
+            <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Upload Staff Hours Data</DialogTitle>
+                <DialogTitle>Upload Staff Hours</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Paste your staff hours data in the format: Name, daily hours (14 columns), Total Hours, Clock No
-                </p>
-
-                {/* Period Selector */}
-                <div className="space-y-2">
-                  <Label htmlFor="upload-period">Upload Data For Pay Period:</Label>
-                  <Select
-                    value={uploadPeriodId ? uploadPeriodId.toString() : ''}
-                    onValueChange={value => setUploadPeriodId(parseInt(value))}
-                  >
-                    <SelectTrigger className="w-[280px]">
-                      <SelectValue placeholder="Select pay period..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* Only show the incomplete period (Jun 18 - Jul 1) */}
-                      {payPeriods
-                        .filter(period => period.startDate === '2025-06-18') // Only the specific incomplete period
-                        .map(period => (
-                          <SelectItem key={period.id} value={period.id.toString()}>
-                            {period.dates}, 2025 - {period.status === 'current' ? 'Incomplete' : period.status}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Only incomplete payroll periods are shown for data upload</p>
-                </div>
-
-                <Textarea
-                  placeholder="Paste your data here..."
-                  value={pasteData}
-                  onChange={e => setPasteData(e.target.value)}
-                  className="h-96 font-mono text-xs"
+              
+              <div className="flex items-center space-x-2 py-4">
+                <Switch 
+                  id="mode-switch" 
+                  checked={isCsvMode} 
+                  onCheckedChange={setIsCsvMode} 
                 />
-                <div className="flex justify-end gap-2">
+                <Label htmlFor="mode-switch">
+                  {isCsvMode ? 'Switch to Single Entry' : 'Switch to CSV Upload'}
+                </Label>
+              </div>
+
+              <div className="space-y-4">
+                {isCsvMode ? (
+                  <div className="grid w-full max-w-sm items-center gap-1.5">
+                    <Label htmlFor="csv-upload">CSV File</Label>
+                    <Input 
+                      id="csv-upload" 
+                      type="file" 
+                      accept=".csv"
+                      onChange={(e) => setCsvFile(e.target.files?.[0] || null)} 
+                    />
+                    <p className="text-sm text-muted-foreground">Upload a CSV file containing attendance records.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                       <Label>Staff Member</Label>
+                       <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select staff member" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {staffList?.map((staff: any) => (
+                            <SelectItem key={staff.id} value={staff.id.toString()}>
+                              {staff.full_name} ({staff.clock_number})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                       </Select>
+                    </div>
+
+                    <div className="space-y-2 flex flex-col">
+                       <Label>Date</Label>
+                       <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !formDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formDate ? format(formDate, "PPP") : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <CalendarComponent
+                            mode="single"
+                            selected={formDate}
+                            onSelect={setFormDate}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-2">
+                       <Label>Total Hours</Label>
+                       <Input 
+                        type="number" 
+                        step="0.01" 
+                        placeholder="e.g. 8.5" 
+                        value={formHours}
+                        onChange={(e) => setFormHours(e.target.value)}
+                       />
+                    </div>
+                  </>
+                )}
+
+                <div className="flex justify-end gap-2 pt-4">
                   <Button variant="outline" onClick={() => setShowUploadDialog(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handlePasteUpload}>Process Data</Button>
+                  <Button onClick={handleSubmit} disabled={isSubmitting || isUploading}>
+                    {(isSubmitting || isUploading) ? 'Processing...' : (isCsvMode ? 'Upload CSV' : 'Submit Entry')}
+                  </Button>
                 </div>
               </div>
             </DialogContent>
@@ -603,34 +523,44 @@ const TimeAttendanceTab = () => {
                 </tr>
               </thead>
               <tbody className="bg-white">
-                {!isLoading &&
-                  data?.items?.map((staff: any, index: number) => {
-                    // const employee = employees.find(emp => emp.atg_clock_number === staff.clockNo);
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <tr key={index} className="border-b border-gray-100">
+                      <td className="py-2 px-4">
+                        <Skeleton className="h-4 w-32" />
+                      </td>
+                      <td className="py-2 px-4">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="py-2 px-4">
+                        <Skeleton className="h-4 w-16" />
+                      </td>
+                      <td className="py-2 px-4">
+                        <Skeleton className="h-4 w-12" />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  getPaginatedStaff()?.map((record: any, index: number) => {
                     return (
                       <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                         <td className="py-2 px-4">
-                          <p className="font-medium text-blue-600 text-xs">{staff.name}</p>
+                          <p className="font-medium text-blue-600 text-xs">{record.staff_details?.full_name}</p>
                         </td>
                         <td className="py-2 px-4">
-                          {/* {employee ? (
-                            <Badge variant="outline" className="text-xs">
-                              {employee.employee_type === 'permanent' ? 'Permanent' : 'Casual'}
-                            </Badge>
-                          ) : (
-                            <span className="text-gray-500 text-xs">Unknown</span>
-                          )} */}
-                          <Badge variant="outline" className="text-xs">
-                            Permanent
+                          <Badge variant="outline" className="text-xs capitalize">
+                             {record.staff_details?.employee_type || 'Permanent'}
                           </Badge>
                         </td>
                         <td className="py-2 px-4 text-xs">
-                          {staff?.raw_payload?.timeSpend ? Math.round(staff.raw_payload.timeSpend / (1000 * 60 * 60)) + ' hrs' : '—'}
+                          {record.total_hours} hrs
                         </td>
 
-                        <td className="py-2 px-4 text-xs">{staff.clock_number}</td>
+                        <td className="py-2 px-4 text-xs">{record.staff_details?.clock_number}</td>
                       </tr>
                     );
-                  })}
+                  })
+                )}
               </tbody>
             </table>
           </div>

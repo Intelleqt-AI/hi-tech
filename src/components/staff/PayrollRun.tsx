@@ -146,7 +146,7 @@ const PayrollRun = () => {
 
   const filteredPayrollHistory = payrollHistory.filter(payroll => {
     const matchesSearch = payroll.period.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         payroll.type.toLowerCase().includes(searchTerm.toLowerCase());
+      payroll.type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || payroll.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -180,7 +180,7 @@ const PayrollRun = () => {
                   className="pl-10 w-full sm:w-64"
                 />
               </div>
-              
+
               <Select value={periodFilter} onValueChange={setPeriodFilter}>
                 <SelectTrigger className="w-full sm:w-40">
                   <SelectValue placeholder="Payment Period" />
@@ -191,7 +191,7 @@ const PayrollRun = () => {
                   <SelectItem value="previous">Previous Period</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full sm:w-32">
                   <SelectValue placeholder="Status" />
@@ -204,7 +204,7 @@ const PayrollRun = () => {
                   <SelectItem value="Cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Button
                 variant="outline"
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -213,7 +213,7 @@ const PayrollRun = () => {
                 Advanced Filter
               </Button>
             </div>
-            
+
             <div className="flex gap-2">
               <Button variant="outline">Import</Button>
               <Sheet open={showCreatePayRun} onOpenChange={setShowCreatePayRun}>
@@ -227,7 +227,7 @@ const PayrollRun = () => {
                   <SheetHeader>
                     <SheetTitle>Create Pay Run</SheetTitle>
                   </SheetHeader>
-                  
+
                   <div className="space-y-6 mt-6">
                     {/* Pay Run Controls */}
                     <Card>
@@ -241,13 +241,13 @@ const PayrollRun = () => {
                             <Input
                               id="payroll-period"
                               value={newPayrollRun.period}
-                              onChange={(e) => setNewPayrollRun({...newPayrollRun, period: e.target.value})}
+                              onChange={(e) => setNewPayrollRun({ ...newPayrollRun, period: e.target.value })}
                               placeholder="e.g., Jan 1-15, 2024"
                             />
                           </div>
                           <div>
                             <Label htmlFor="run-type">Run Type</Label>
-                            <Select value={newPayrollRun.runType} onValueChange={(value) => setNewPayrollRun({...newPayrollRun, runType: value})}>
+                            <Select value={newPayrollRun.runType} onValueChange={(value) => setNewPayrollRun({ ...newPayrollRun, runType: value })}>
                               <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
@@ -259,18 +259,18 @@ const PayrollRun = () => {
                             </Select>
                           </div>
                         </div>
-                        
+
                         <div>
                           <Label htmlFor="notes">Notes</Label>
                           <Textarea
                             id="notes"
                             value={newPayrollRun.notes}
-                            onChange={(e) => setNewPayrollRun({...newPayrollRun, notes: e.target.value})}
+                            onChange={(e) => setNewPayrollRun({ ...newPayrollRun, notes: e.target.value })}
                             placeholder="Add any notes for this payroll run..."
                             rows={3}
                           />
                         </div>
-                        
+
                         <div className="flex gap-3">
                           <Button onClick={handleCreatePayRun} className="bg-blue-600 hover:bg-blue-700">
                             Process Payroll

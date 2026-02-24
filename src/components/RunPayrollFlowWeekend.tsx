@@ -9,10 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, Users, Clock, Calendar, DollarSign, CheckCircle, Download, Mail } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { fetchEntries, fetchHours } from '@/lib/Api';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import useFetch from '@/hooks/useFetch';
@@ -20,15 +17,7 @@ import useFetch from '@/hooks/useFetch';
 
 
 
-
-interface RunPayrollFlowProps {
-  onBack: () => void;
-  onComplete: () => void;
-}
-
-
-
-const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
+const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
   const [currentStep, setCurrentStep] = useState(1);
   /* const [selectedEmployees, setSelectedEmployees] = useState<any[]>([]); */
   const [selectedEmployees, setSelectedEmployees] = useState<any[]>([]);
@@ -46,39 +35,18 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
   });
   const [payrollId, setPayrollId] = useState<string>(null);
 
-  /*
-  const {
-    data,
-    isLoading: customLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['entries', payPeriod?.start_date, payPeriod?.end_date],
-    queryFn: () => fetchEntries({ date_from: payPeriod?.start_date, date_to: payPeriod?.end_date, selectedDate: null }),
-    enabled: !!payPeriod?.start_date && !!payPeriod?.end_date,
-  });
-  
-  const {
-      data: hoursData,
-      isLoading: hoursLoading,
-  } = useQuery({
-      queryKey: ['hours', payPeriod?.start_date, payPeriod?.end_date],
-      queryFn: () => fetchHours({ date_from: payPeriod?.start_date, date_to: payPeriod?.end_date }),
-      enabled: !!payPeriod?.start_date && !!payPeriod?.end_date,
-  });
-  */
+
 
 
   const { data: wageReportData, isLoading: wageReportLoading } = useFetch(
-    `/atg/attendance/staff-select-wage-report/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod?.start_date}&end_date=${payPeriod?.end_date}`,
+    `/atg/attendance/staff-weekend-wage-report/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod?.start_date}&end_date=${payPeriod?.end_date}`,
     {
       enabled: !!payPeriod?.start_date && !!payPeriod?.end_date,
     }
   );
 
   const payrollQuery = currentStep >= 3 && selectedEmployees.length > 0
-    ? `/atg/attendance/staff-payroll-details/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod.start_date}&end_date=${payPeriod.end_date}&staff_ids=${selectedEmployees.map((e: any) => e.id).join(',')}`
+    ? `/atg/attendance/staff-weekend-payroll-details/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod.start_date}&end_date=${payPeriod.end_date}&staff_ids=${selectedEmployees.map((e: any) => e.id).join(',')}`
     : '';
 
   const { data: payrollDetails, isLoading: payrollLoading } = useFetch(
@@ -769,17 +737,11 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
               <Download className="h-4 w-4 mr-2" />
               Download Report
             </Button>
-            {/* {payrollId && (
-              <Button onClick={onComplete} className="bg-blue-600 hover:bg-blue-700">
-                Finish
-              </Button>
-            )} */}
           </div>
         </div>
       </CardContent>
     </Card>
   );
-
   const handleDownloadReport = async () => {
     if (!payrollId) return;
     try {
@@ -796,8 +758,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
   const processPayrollMutation = useMutation({
     mutationFn: (data: any) => postData({ url: 'atg/attendance/save-payroll-run/', data }),
     onSuccess: (data) => {
-      // onComplete();
-      // console.log(data);
+      //   onComplete();
       setPayrollId(data.batch_id);
     },
     onError: (error) => {
@@ -934,4 +895,4 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
   );
 };
 
-export default RunPayrollFlow;
+export default RunPayrollFlowWeekend;
