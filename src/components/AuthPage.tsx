@@ -20,6 +20,14 @@ const AuthPage = () => {
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if (import.meta.env.PROD) {
+      toast({
+        title: "Backend Syncing",
+        description: "The backend is currently being set up. It will be available soon!",
+      });
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
