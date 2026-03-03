@@ -147,13 +147,28 @@ export const patchData = async ({ url, data }) => {
 
 export const loginUser = async ({ email, password }: { email: string; password: string }) => {
   try {
-    // Sending both email and username as some APIs expect one or the other
     const res = await api.post('users/token/', {
       email,
-      username: email,
       password
     });
     return res.data; // { access, refresh }
+  } catch (error: any) {
+    throw error;
+  }
+};
+
+export interface RegisterUserData {
+  email: string;
+  password: string;
+  password2: string;
+  first_name: string;
+  last_name: string;
+}
+
+export const registerUser = async (data: RegisterUserData) => {
+  try {
+    const res = await api.post('users/register/', data);
+    return res.data;
   } catch (error: any) {
     throw error;
   }

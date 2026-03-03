@@ -1,7 +1,4 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import type { User } from '@supabase/supabase-js';
 
 interface Profile {
   id: string;
@@ -13,12 +10,19 @@ interface Profile {
   user_id: string;
 }
 
+interface User {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  role?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -32,52 +36,81 @@ export const useAuth = () => {
   return context;
 };
 
+// Helper function to decode JWT token payload
+const decodeJwtPayload = (token: string): any | null => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const storedUser = localStorage.getItem('user');
         const token = localStorage.getItem('access');
+        const storedUser = localStorage.getItem('user');
 
         if (token) {
-          let parsedUser = null;
-          try {
-            if (storedUser && storedUser !== 'undefined') {
+          // Try to parse stored user data first
+          let parsedUser: User | null = null;
+
+          if (storedUser && storedUser !== 'undefined') {
+            try {
               parsedUser = JSON.parse(storedUser);
+            } catch (e) {
+              // Silently fail if stored user is invalid
             }
-          } catch (e) {
-            // Silently fail if stored user is invalid
+          }
+
+          // If no stored user, try to extract from JWT
+          if (!parsedUser) {
+            const tokenPayload = decodeJwtPayload(token);
+            if (tokenPayload) {
+              parsedUser = {
+                id: tokenPayload.user_id || tokenPayload.sub || 'authenticated',
+                email: tokenPayload.email || 'user@example.com',
+                first_name: tokenPayload.first_name,
+                last_name: tokenPayload.last_name,
+                full_name: tokenPayload.full_name || `${tokenPayload.first_name || ''} ${tokenPayload.last_name || ''}`.trim() || 'User',
+                role: tokenPayload.role || 'user',
+              };
+            }
           }
 
           if (parsedUser) {
             setUser(parsedUser);
             setProfile({
-              id: parsedUser.id || parsedUser.pk || '',
-              email: parsedUser.email || '',
-              full_name: parsedUser.full_name || parsedUser.username || 'User',
+              id: parsedUser.id,
+              email: parsedUser.email,
+              full_name: parsedUser.full_name || `${parsedUser.first_name || ''} ${parsedUser.last_name || ''}`.trim() || 'User',
               role: parsedUser.role || 'user',
-              user_id: parsedUser.id || parsedUser.pk || ''
+              user_id: parsedUser.id,
             });
           } else {
-            const minimalUser = { id: 'authenticated', email: 'user@example.com' };
+            // Fallback: Token exists but we couldn't extract user info
+            const minimalUser: User = { id: 'authenticated', email: 'user@example.com' };
             setUser(minimalUser);
             setProfile({
               id: 'authenticated',
               email: 'user@example.com',
               full_name: 'Authenticated User',
               role: 'user',
-              user_id: 'authenticated'
+              user_id: 'authenticated',
             });
-          }
-        } else {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            setUser(session.user);
-            await fetchProfile(session.user.id);
           }
         }
       } catch (error) {
@@ -90,55 +123,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initAuth();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (data) {
-        setProfile(data);
-      }
-    } catch (error) {
-      console.error('AuthProvider: Profile fetch error:', error);
-    }
-  };
-
-  const signIn = async (email: string, password: string) => {
-    // This will be handled by useLogin hook in AuthPage
-    // But we can keep it here if needed
-    throw new Error("Use useLogin hook for signing in");
-  };
-
-  const signUp = async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-        },
-      },
-    });
-    if (error) throw error;
-  };
-
   const signOut = async () => {
-    localStorage.clear();
-    await supabase.auth.signOut();
+    localStorage.removeItem('access');
+    localStorage.removeItem('refresh');
+    localStorage.removeItem('user');
     setUser(null);
     setProfile(null);
-    window.location.href = '/';
+    window.location.href = '/login';
   };
 
   const value = {
     user,
     profile,
     loading,
-    signIn,
-    signUp,
     signOut,
   };
 

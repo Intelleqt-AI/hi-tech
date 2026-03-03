@@ -4,7 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import AuthPage from "./components/AuthPage";
+import LoginPage from "./pages/Login";
+import SignupPage from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 import WeekendPayroll from "./pages/WeekendPayroll";
 import GeneralPayroll from "./pages/GeneralPayroll";
@@ -25,9 +26,9 @@ const queryClient = new QueryClient({
   },
 });
 
-const AppContent = () => {
+// Protected Route wrapper component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-
 
   if (loading) {
     return (
@@ -42,43 +43,73 @@ const AppContent = () => {
   }
 
   if (!user) {
-    console.log('AppContent: No user, showing AuthPage');
-    return <AuthPage />;
+    return <Navigate to="/login" replace />;
   }
 
-  console.log('AppContent: User authenticated, showing main app');
+  return <>{children}</>;
+};
+
+// Public Route wrapper (redirects to app if already logged in)
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <div className="text-lg text-gray-600">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/staff" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const AppRoutes = () => {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Navigate to="/staff" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/staff" element={<StaffPage />}>
-            <Route index element={<Navigate to="directory" replace />} />
-            <Route path="directory" element={<StaffDirectory />} />
-            <Route path="attendance" element={<TimeAttendanceTab />} />
-            <Route path="loans" element={<LoansAndBonusesTab />} />
-          </Route>
-          <Route path="/payroll/general" element={<GeneralPayroll />} />
-          <Route path="/payroll/weekend" element={<WeekendPayroll />} />
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+      <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+
+      {/* Protected Routes */}
+      <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+        <Route path="/" element={<Navigate to="/staff" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/staff" element={<StaffPage />}>
+          <Route index element={<Navigate to="directory" replace />} />
+          <Route path="directory" element={<StaffDirectory />} />
+          <Route path="attendance" element={<TimeAttendanceTab />} />
+          <Route path="loans" element={<LoansAndBonusesTab />} />
         </Route>
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+        <Route path="/payroll/general" element={<GeneralPayroll />} />
+        <Route path="/payroll/weekend" element={<WeekendPayroll />} />
+      </Route>
+
+      {/* 404 */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 };
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <AppContent />
-        <Toaster />
-        <Sonner />
-      </AuthProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+          <Toaster />
+          <Sonner />
+        </AuthProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
 
 export default App;
-
