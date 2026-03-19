@@ -357,11 +357,11 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
                     <SelectValue placeholder="Select company..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value=" ">All Companies</SelectItem>
+                    {/* <SelectItem value=" ">All Companies</SelectItem> */}
                     <SelectItem value="RANDM">RANDM</SelectItem>
                     <SelectItem value="hitec">HITEC</SelectItem>
                     <SelectItem value="CASUALS">CASUALS</SelectItem>
-                    <SelectItem value="YOUTH @ WORK">YOUTH @ WORK</SelectItem>
+                    <SelectItem value="YOUTH_WORK">YOUTH @ WORK</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

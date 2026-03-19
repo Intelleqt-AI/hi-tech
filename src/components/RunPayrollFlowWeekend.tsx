@@ -337,10 +337,13 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
                   <SelectTrigger className="mt-2">
                     <SelectValue placeholder="Select company..." />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value=" ">All Companies</SelectItem>
-                    <SelectItem value="hitec">HITEC</SelectItem>
-                  </SelectContent>
+                          <SelectContent>
+                                   {/* <SelectItem value=" ">All Companies</SelectItem> */}
+                                   <SelectItem value="RANDM">RANDM</SelectItem>
+                                   <SelectItem value="hitec">HITEC</SelectItem>
+                                   <SelectItem value="CASUALS">CASUALS</SelectItem>
+                                   <SelectItem value="YOUTH_WORK">YOUTH @ WORK</SelectItem>
+                            </SelectContent>
                 </Select>
               </div>
               <div className="h-[52px] flex items-center justify-center text-xs text-muted-foreground border border-dashed rounded-lg">
