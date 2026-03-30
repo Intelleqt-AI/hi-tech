@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Calendar, Clock, AlertTriangle, CheckCircle, Edit, Upload, Users, CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, CheckCircle, Edit, Upload, Users, CalendarIcon, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 // import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,7 @@ const TimeAttendanceTab = () => {
   const [currentPage, setCurrentPage] = useState(1);
   // const [itemsPerPage] = useState(20);
   const [itemsPerPage] = useState(20);
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
   const [timeOffRequests, setTimeOffRequests] = useState<any[]>([]);
   
@@ -287,18 +288,26 @@ const TimeAttendanceTab = () => {
     return [];
   };
 
-  // Get paginated staff data
-  const getPaginatedStaff = () => {
+  // Get filtered + paginated staff data
+  const getFilteredRecords = () => {
     const records = data?.records || [];
+    if (!searchQuery.trim()) return records;
+    const q = searchQuery.toLowerCase();
+    return records.filter((r: { staff_details?: { full_name?: string; clock_number?: string | number } }) =>
+      r.staff_details?.full_name?.toLowerCase().includes(q) ||
+      r.staff_details?.clock_number?.toString().toLowerCase().includes(q)
+    );
+  };
+
+  const getPaginatedStaff = () => {
+    const filtered = getFilteredRecords();
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return records.slice(startIndex, endIndex);
+    return filtered.slice(startIndex, startIndex + itemsPerPage);
   };
 
   // Calculate pagination info
   const getTotalPages = () => {
-    const records = data?.records || [];
-    return Math.ceil(records.length / itemsPerPage);
+    return Math.ceil(getFilteredRecords().length / itemsPerPage);
   };
 
   const totalPages = getTotalPages();
@@ -501,11 +510,17 @@ const TimeAttendanceTab = () => {
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold">Staff Hours</h3>
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or clock no..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                className="pl-7 h-8 text-xs w-52"
+              />
+            </div>
             <span className="text-xs text-gray-600">
               {selectedDate ? new Date(selectedDate).toLocaleDateString() : new Date().toLocaleDateString()}
-            </span>
-            <span className="text-xs font-normal text-muted-foreground">
-              {/* Showing {Math.min(itemsPerPage, totalStaff)} of {totalStaff} entries */}
             </span>
           </div>
         </div>
