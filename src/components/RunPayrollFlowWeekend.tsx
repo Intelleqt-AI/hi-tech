@@ -770,18 +770,25 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
   });
 
   const handleProcessPayroll = () => {
-    // Construct payload
     const payload = {
-      period_name: `${payPeriod.start_date} to ${payPeriod.end_date}`,
       start_date: payPeriod.start_date,
       end_date: payPeriod.end_date,
-      pay_date: payPeriod.pay_date,
-      total_employees: selectedEmployees.length,
-      total_gross_pay: payRollInfo.reduce((sum: any, calc: any) => sum + calc.gross_pay, 0),
-      total_deductions: payRollInfo.reduce((sum: any, calc: any) => sum + (calc.other_deductions || 0) + (calc.loan_deductions || 0), 0),
-      total_net_pay: payRollInfo.reduce((sum: any, calc: any) => sum + calc.net_pay, 0),
-      status: 'completed',
-      employee_info: payRollInfo,
+      records: payRollInfo.map((calc: {
+        id: number; capped_hours?: number; hourly_rate?: number; bonus_pay?: number;
+        total_worked_hours?: number; total_weekend_hours?: number; total_paid_hours?: number;
+        other_deductions?: number; loan_deductions?: number; net_pay?: number;
+      }) => ({
+        staff_id: calc.id,
+        capped_hours: calc.capped_hours ?? 0,
+        hourly_rate: calc.hourly_rate ?? 0,
+        bonus: calc.bonus_pay ?? 0,
+        total_hours: calc.total_worked_hours ?? 0,
+        weekend_hours: calc.total_weekend_hours ?? 0,
+        paid_hours: calc.total_paid_hours ?? 0,
+        other_deductions: calc.other_deductions ?? 0,
+        loans: calc.loan_deductions ?? 0,
+        net_salary: calc.net_pay ?? 0,
+      })),
     };
 
     processPayrollMutation.mutate(payload);
