@@ -11,6 +11,7 @@ import { generatePayrollPDF, PayrollSummaryData } from '@/utils/payrollPDF';
 import { fetchEntries, downloadFile } from '@/lib/Api';
 import { useQuery } from '@tanstack/react-query';
 import useFetch from '@/hooks/useFetch';
+import { useNavigate } from 'react-router-dom';
 
 interface PayrollTabProps {
   onRunPayroll: () => void;
@@ -74,6 +75,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
   const [payrollPeriods, setPayrollPeriods] = useState([]);
 
   const currentPeriod = calculatePayPeriods();
+  const navigate = useNavigate();
 
   const { data: apiPayrollData, isLoading: isApiLoading } = useFetch('atg/attendance/recent-payroll-runs/');
 
@@ -200,7 +202,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
             total_deductions: acc.total_deductions + (parseFloat(emp.total_deductions) || 0),
             total_net_pay: acc.total_net_pay + (parseFloat(emp.net_pay) || 0),
           }),
-          { total_employees: 0, total_gross_pay: 0, total_deductions: 0, total_net_pay: 0 }
+          { total_employees: 0, total_gross_pay: 0, total_deductions: 0, total_net_pay: 0 },
         );
 
         console.log(`Actual period calculations (${earliestDate} to ${latestDate}):`, actualCalculations);
@@ -288,7 +290,6 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     }
   };
 
-
   useEffect(() => {
     console.log('payroll data', payrollPeriods);
   }, [loading]);
@@ -314,7 +315,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
             totalDeductions: acc.totalDeductions + (parseFloat(emp.total_deductions) || 0),
             totalNetPay: acc.totalNetPay + (parseFloat(emp.net_pay) || 0),
           }),
-          { totalEmployees: 0, totalGrossPay: 0, totalDeductions: 0, totalNetPay: 0 }
+          { totalEmployees: 0, totalGrossPay: 0, totalDeductions: 0, totalNetPay: 0 },
         );
 
         setCurrentPeriodCalculations({
@@ -345,7 +346,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     try {
       await downloadFile(
         `staff/payroll-batches/${payroll.id}/export-csv/`,
-        `Payroll_Report_${payroll.start_date}_to_${payroll.end_date}.csv`
+        `Payroll_Report_${payroll.start_date}_to_${payroll.end_date}.csv`,
       );
 
       toast({
@@ -381,7 +382,8 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     .filter(payroll => {
       const matchesStatus = filterStatus === 'all' || payroll.status.toLowerCase() === filterStatus;
       const matchesType = filterType === 'all' || payroll.period_type.toLowerCase() === filterType.toLowerCase();
-      return matchesStatus && matchesType;
+      const matchesRunType = payroll.run_type === 'weekend';
+      return matchesStatus && matchesType && matchesRunType;
     })
     .sort((a, b) => {
       // Draft periods first (newest draft first), then completed periods (newest completed first)
@@ -513,7 +515,8 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Employees</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Total Cost</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Run Date</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Actions</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Download</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">View</th>
                 </tr>
               </thead>
               <tbody>
@@ -522,14 +525,15 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                     <td className="py-2 px-4">
                       <div className="flex items-center gap-2">
                         <div
-                          className={`w-3 h-3 rounded-full ${payroll.status === 'completed'
-                            ? 'bg-green-500'
-                            : payroll.status === 'draft'
-                              ? 'bg-orange-500'
-                              : payroll.status === 'processing'
-                                ? 'bg-blue-500'
-                                : 'bg-red-500'
-                            }`}
+                          className={`w-3 h-3 rounded-full ${
+                            payroll.status === 'completed'
+                              ? 'bg-green-500'
+                              : payroll.status === 'draft'
+                                ? 'bg-orange-500'
+                                : payroll.status === 'processing'
+                                  ? 'bg-blue-500'
+                                  : 'bg-red-500'
+                          }`}
                         ></div>
                         <span className="text-xs font-medium text-foreground">
                           {payroll.status === 'completed'
@@ -579,6 +583,11 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                         )}
                       </div>
                     </td>
+                    <td className="py-2 px-4">
+                      <button onClick={() => navigate(`/staff/payroll-batches/${payroll.id}/slips`)}>
+                        <Eye className="h-4 w-4 cursor-pointer hover:text-primary" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -607,4 +616,3 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
 };
 
 export default WeekendPayrollTab;
-

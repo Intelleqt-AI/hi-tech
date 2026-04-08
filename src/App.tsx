@@ -15,6 +15,7 @@ import Layout from "./components/Layout";
 import TimeAttendanceTab from "./components/staff/TimeAttendanceTab";
 import LoansAndBonusesTab from "./components/staff/LoansAndBonusesTab";
 import StaffDirectory from "./components/staff/StaffDirectory";
+import PayrollBatchSlips from "./pages/PayrollBatchSlips";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -90,6 +91,7 @@ const AppRoutes = () => {
         </Route>
         <Route path="/payroll/general" element={<GeneralPayroll />} />
         <Route path="/payroll/weekend" element={<WeekendPayroll />} />
+        <Route path="/staff/payroll-batches/:id/slips" element={<PayrollBatchSlips />} />
       </Route>
 
       {/* 404 */}

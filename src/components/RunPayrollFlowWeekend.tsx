@@ -14,9 +14,6 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import useFetch from '@/hooks/useFetch';
 
-
-
-
 const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
   const [currentStep, setCurrentStep] = useState(1);
   /* const [selectedEmployees, setSelectedEmployees] = useState<any[]>([]); */
@@ -35,25 +32,19 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
   });
   const [payrollId, setPayrollId] = useState<string>(null);
 
-
-
-
   const { data: wageReportData, isLoading: wageReportLoading } = useFetch(
     `/atg/attendance/staff-weekend-wage-report/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod?.start_date}&end_date=${payPeriod?.end_date}`,
     {
       enabled: !!payPeriod?.start_date && !!payPeriod?.end_date,
-    }
+    },
   );
 
-  const payrollQuery = currentStep >= 3 && selectedEmployees.length > 0
-    ? `/atg/attendance/staff-weekend-payroll-details/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod.start_date}&end_date=${payPeriod.end_date}&staff_ids=${selectedEmployees.map((e: any) => e.id).join(',')}`
-    : '';
+  const payrollQuery =
+    currentStep >= 3 && selectedEmployees.length > 0
+      ? `/atg/attendance/staff-weekend-payroll-details/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod.start_date}&end_date=${payPeriod.end_date}&staff_ids=${selectedEmployees.map((e: any) => e.id).join(',')}`
+      : '';
 
-  const { data: payrollDetails, isLoading: payrollLoading } = useFetch(
-    payrollQuery,
-    { enabled: !!payrollQuery }
-  );
-
+  const { data: payrollDetails, isLoading: payrollLoading } = useFetch(payrollQuery, { enabled: !!payrollQuery });
 
   // Calculate dynamic fortnightly pay periods based on actual time records
   const calculatePayPeriods = () => {
@@ -161,8 +152,6 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
     }
   }, [payPeriod, wageReportData]);
 
-
-
   // Sync payroll details from API to state
   useEffect(() => {
     if (payrollDetails?.staff) {
@@ -214,7 +203,6 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
       setPayRollInfo(mappedEmployees);
     }
   }, [payrollDetails]);
-
 
   useEffect(() => {
     if (!payrollDetails && selectedEmployees.length > 0) {
@@ -337,13 +325,13 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
                   <SelectTrigger className="mt-2">
                     <SelectValue placeholder="Select company..." />
                   </SelectTrigger>
-                          <SelectContent>
-                                   {/* <SelectItem value=" ">All Companies</SelectItem> */}
-                                   <SelectItem value="RANDM">RANDM</SelectItem>
-                                   <SelectItem value="hitec">HITEC</SelectItem>
-                                   <SelectItem value="CASUALS">CASUALS</SelectItem>
-                                   <SelectItem value="YOUTH_WORK">YOUTH @ WORK</SelectItem>
-                            </SelectContent>
+                  <SelectContent>
+                    {/* <SelectItem value=" ">All Companies</SelectItem> */}
+                    <SelectItem value="RANDM">RANDM</SelectItem>
+                    <SelectItem value="hitec">HITEC</SelectItem>
+                    <SelectItem value="CASUALS">CASUALS</SelectItem>
+                    <SelectItem value="YOUTH_WORK">YOUTH @ WORK</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
               <div className="h-[52px] flex items-center justify-center text-xs text-muted-foreground border border-dashed rounded-lg">
@@ -355,7 +343,6 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
       </div>
     </div>
   );
-
 
   const renderStep2 = () => (
     <div className="space-y-4">
@@ -474,7 +461,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
           };
         }
         return calc;
-      })
+      }),
     );
   };
 
@@ -497,7 +484,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
           };
         }
         return calc;
-      })
+      }),
     );
   };
 
@@ -519,23 +506,27 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
           };
         }
         return calc;
-      })
+      }),
     );
   };
 
   const renderStep4 = () => (
     <div className="space-y-4">
       {/* Summary Totals at Top */}
-      <div className='sticky w-full top-32 z-10 bg-background'>
-        <Card className='shadow-sm'>
+      <div className="sticky w-full top-32 z-10 bg-background">
+        <Card className="shadow-sm">
           <CardContent className="py-4">
             <div className="grid grid-cols-5 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold">{formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.gross_pay, 0))}</div>
+                <div className="text-2xl font-bold">
+                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.gross_pay, 0))}
+                </div>
                 <div className="text-sm text-muted-foreground">Total Gross</div>
               </div>
               <div>
-                <div className="text-2xl font-bold">{formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.bonus_pay, 0))}</div>
+                <div className="text-2xl font-bold">
+                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.bonus_pay, 0))}
+                </div>
                 <div className="text-sm text-muted-foreground">Total Additions</div>
               </div>
               <div>
@@ -643,11 +634,15 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
           <div className="mt-4 p-3 bg-muted rounded-lg">
             <div className="grid grid-cols-5 gap-4 text-center">
               <div>
-                <div className="text-lg font-bold">{formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.gross_pay, 0))}</div>
+                <div className="text-lg font-bold">
+                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.gross_pay, 0))}
+                </div>
                 <div className="text-sm text-muted-foreground">Total Gross</div>
               </div>
               <div>
-                <div className="text-lg font-bold">{formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.bonus_pay, 0))}</div>
+                <div className="text-lg font-bold">
+                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.bonus_pay, 0))}
+                </div>
                 <div className="text-sm text-muted-foreground">Total Additions</div>
               </div>
               <div>
@@ -670,8 +665,6 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
               </div>
             </div>
           </div>
-
-
         </CardContent>
       </Card>
     </div>
@@ -736,7 +729,12 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
               <CheckCircle className="h-4 w-4 mr-2" />
               {payrollId ? 'Payroll Processed' : 'Process Payroll'}
             </Button>
-            <Button variant="outline" onClick={handleDownloadReport} disabled={!payrollId} className='disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200 disabled:hover:bg-gray-200 disabled:hover:text-gray-500 disabled:hover:border-gray-200 disabled:hover:cursor-not-allowed'>
+            <Button
+              variant="outline"
+              onClick={handleDownloadReport}
+              disabled={!payrollId}
+              className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200 disabled:hover:bg-gray-200 disabled:hover:text-gray-500 disabled:hover:border-gray-200 disabled:hover:cursor-not-allowed"
+            >
               <Download className="h-4 w-4 mr-2" />
               Download Report
             </Button>
@@ -750,45 +748,54 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
     try {
       await downloadFile(
         `staff/payroll-batches/${payrollId}/export-csv/`,
-        `Payroll_Report_${payPeriod.start_date}_to_${payPeriod.end_date}.csv`
+        `Payroll_Report_${payPeriod.start_date}_to_${payPeriod.end_date}.csv`,
       );
     } catch (error) {
       console.error('Error downloading report:', error);
     }
   };
 
-
   const processPayrollMutation = useMutation({
     mutationFn: (data: any) => postData({ url: 'atg/attendance/save-payroll-run/', data }),
-    onSuccess: (data) => {
+    onSuccess: data => {
       //   onComplete();
       setPayrollId(data.batch_id);
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Error processing payroll:', error);
-    }
+    },
   });
 
   const handleProcessPayroll = () => {
     const payload = {
       start_date: payPeriod.start_date,
       end_date: payPeriod.end_date,
-      records: payRollInfo.map((calc: {
-        id: number; capped_hours?: number; hourly_rate?: number; bonus_pay?: number;
-        total_worked_hours?: number; total_weekend_hours?: number; total_paid_hours?: number;
-        other_deductions?: number; loan_deductions?: number; net_pay?: number;
-      }) => ({
-        staff_id: calc.id,
-        capped_hours: calc.capped_hours ?? 0,
-        hourly_rate: calc.hourly_rate ?? 0,
-        bonus: calc.bonus_pay ?? 0,
-        total_hours: calc.total_worked_hours ?? 0,
-        weekend_hours: calc.total_weekend_hours ?? 0,
-        paid_hours: calc.total_paid_hours ?? 0,
-        other_deductions: calc.other_deductions ?? 0,
-        loans: calc.loan_deductions ?? 0,
-        net_salary: calc.net_pay ?? 0,
-      })),
+      type: 'weekend',
+      records: payRollInfo.map(
+        (calc: {
+          id: number;
+          capped_hours?: number;
+          hourly_rate?: number;
+          bonus_pay?: number;
+          total_worked_hours?: number;
+          total_weekend_hours?: number;
+          total_paid_hours?: number;
+          other_deductions?: number;
+          loan_deductions?: number;
+          net_pay?: number;
+        }) => ({
+          staff_id: calc.id,
+          capped_hours: calc.capped_hours ?? 0,
+          hourly_rate: calc.hourly_rate ?? 0,
+          bonus: calc.bonus_pay ?? 0,
+          total_hours: calc.total_worked_hours ?? 0,
+          weekend_hours: calc.total_weekend_hours ?? 0,
+          paid_hours: calc.total_paid_hours ?? 0,
+          other_deductions: calc.other_deductions ?? 0,
+          loans: calc.loan_deductions ?? 0,
+          net_salary: calc.net_pay ?? 0,
+        }),
+      ),
     };
 
     processPayrollMutation.mutate(payload);
@@ -808,7 +815,6 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
         return renderStep1();
     }
   };
-
 
   if (wageReportLoading || payrollLoading) {
     return (
@@ -851,12 +857,13 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
                     <div
                       className={`
                       flex items-center justify-center w-8 h-8 rounded-full border-2 text-xs
-                      ${isActive
+                      ${
+                        isActive
                           ? 'border-blue-500 bg-blue-50 text-blue-600'
                           : isCompleted
                             ? 'border-green-500 bg-green-50 text-green-600'
                             : 'border-gray-300 bg-gray-50 text-gray-400'
-                        }
+                      }
                     `}
                     >
                       <Icon className="h-3 w-3" />

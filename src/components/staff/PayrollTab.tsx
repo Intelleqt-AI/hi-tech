@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DollarSign, Calendar, FileText, Play, Eye, Download, Filter } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePayrollPDF, PayrollSummaryData } from '@/utils/payrollPDF';
@@ -65,6 +66,7 @@ const calculatePayPeriods = () => {
 };
 
 const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
+  const navigate = useNavigate();
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
@@ -200,7 +202,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
             total_deductions: acc.total_deductions + (parseFloat(emp.total_deductions) || 0),
             total_net_pay: acc.total_net_pay + (parseFloat(emp.net_pay) || 0),
           }),
-          { total_employees: 0, total_gross_pay: 0, total_deductions: 0, total_net_pay: 0 }
+          { total_employees: 0, total_gross_pay: 0, total_deductions: 0, total_net_pay: 0 },
         );
 
         console.log(`Actual period calculations (${earliestDate} to ${latestDate}):`, actualCalculations);
@@ -288,7 +290,6 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     }
   };
 
-
   useEffect(() => {
     console.log('payroll data', payrollPeriods);
   }, [loading]);
@@ -314,7 +315,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
             totalDeductions: acc.totalDeductions + (parseFloat(emp.total_deductions) || 0),
             totalNetPay: acc.totalNetPay + (parseFloat(emp.net_pay) || 0),
           }),
-          { totalEmployees: 0, totalGrossPay: 0, totalDeductions: 0, totalNetPay: 0 }
+          { totalEmployees: 0, totalGrossPay: 0, totalDeductions: 0, totalNetPay: 0 },
         );
 
         setCurrentPeriodCalculations({
@@ -345,7 +346,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     try {
       await downloadFile(
         `staff/payroll-batches/${payroll.id}/export-csv/`,
-        `Payroll_Report_${payroll.start_date}_to_${payroll.end_date}.csv`
+        `Payroll_Report_${payroll.start_date}_to_${payroll.end_date}.csv`,
       );
 
       toast({
@@ -381,7 +382,8 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     .filter(payroll => {
       const matchesStatus = filterStatus === 'all' || payroll.status.toLowerCase() === filterStatus;
       const matchesType = filterType === 'all' || payroll.period_type.toLowerCase() === filterType.toLowerCase();
-      return matchesStatus && matchesType;
+      const matchesRunType = payroll.run_type === 'general';
+      return matchesStatus && matchesType && matchesRunType;
     })
     .sort((a, b) => {
       // Draft periods first (newest draft first), then completed periods (newest completed first)
@@ -391,8 +393,6 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
       // Within same status, sort by end date descending (newest first)
       return new Date(b.end_date).getTime() - new Date(a.end_date).getTime();
     });
-
-  console.log('Current Payroll Period', data);
 
   const currentDraft = payrollHistory.find(p => p.id === 'current-period') || currentPeriodCalculations;
 
@@ -513,7 +513,8 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Employees</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Total Cost</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Run Date</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Actions</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Download</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">View</th>
                 </tr>
               </thead>
               <tbody>
@@ -522,14 +523,15 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                     <td className="py-2 px-4">
                       <div className="flex items-center gap-2">
                         <div
-                          className={`w-3 h-3 rounded-full ${payroll.status === 'completed'
-                            ? 'bg-green-500'
-                            : payroll.status === 'draft'
-                              ? 'bg-orange-500'
-                              : payroll.status === 'processing'
-                                ? 'bg-blue-500'
-                                : 'bg-red-500'
-                            }`}
+                          className={`w-3 h-3 rounded-full ${
+                            payroll.status === 'completed'
+                              ? 'bg-green-500'
+                              : payroll.status === 'draft'
+                                ? 'bg-orange-500'
+                                : payroll.status === 'processing'
+                                  ? 'bg-blue-500'
+                                  : 'bg-red-500'
+                          }`}
                         ></div>
                         <span className="text-xs font-medium text-foreground">
                           {payroll.status === 'completed'
@@ -578,6 +580,11 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                           </Button>
                         )}
                       </div>
+                    </td>
+                    <td className="py-2 px-4">
+                      <button onClick={() => navigate(`/staff/payroll-batches/${payroll.id}/slips`)}>
+                        <Eye className="h-4 w-4 cursor-pointer hover:text-primary" />
+                      </button>
                     </td>
                   </tr>
                 ))}
