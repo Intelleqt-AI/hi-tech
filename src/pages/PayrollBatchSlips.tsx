@@ -1,17 +1,33 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import useFetch from '@/hooks/useFetch';
+
+const PAGE_SIZE = 20;
 
 const PayrollBatchSlips = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const { data, isLoading } = useFetch(`staff/payroll-batches/${id}/slips/`);
+  const { data, isLoading } = useFetch(
+    `staff/payroll-batches/${id}/slips/?page=${currentPage}&page_size=${PAGE_SIZE}`
+  );
 
   const slips = data?.results ?? [];
+  const totalCount = data?.count ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const fmt = (val: string | number) =>
     `R ${parseFloat(val as string).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -91,10 +107,51 @@ const PayrollBatchSlips = () => {
           </table>
         </div>
 
+        {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
           <p className="text-xs text-gray-600">
-            {isLoading ? '...' : `Showing ${slips.length} of ${data?.count ?? slips.length} slips`}
+            {isLoading ? '...' : `Page ${currentPage} of ${totalPages} — ${totalCount} slips total`}
           </p>
+
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) pageNum = i + 1;
+                  else if (currentPage <= 3) pageNum = i + 1;
+                  else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                  else pageNum = currentPage - 2 + i;
+
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(pageNum)}
+                        isActive={currentPage === pageNum}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </div>
       </div>
     </div>
