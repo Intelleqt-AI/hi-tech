@@ -99,6 +99,8 @@ const StaffDirectory = () => {
     phone_number: '',
     address: '',
     cap_hour: '',
+    bank_account_number: '',
+    bank_branch_code: '',
   });
 
   const [editStaffForm, setEditStaffForm] = useState({
@@ -115,6 +117,8 @@ const StaffDirectory = () => {
     phone_number: '',
     address: '',
     cap_hour: '',
+    bank_account_number: '',
+    bank_branch_code: '',
   });
 
   const { toast } = useToast();
@@ -238,6 +242,8 @@ const StaffDirectory = () => {
       phone_number: employee.phone_number || '',
       address: employee.address || '',
       cap_hour: employee.cap_hour || '',
+      bank_account_number: employee.bank_account_number || '',
+      bank_branch_code: employee.bank_branch_code || '',
     });
     setShowEditStaffDialog(true);
   };
@@ -264,6 +270,8 @@ const StaffDirectory = () => {
         phone_number: editStaffForm.phone_number,
         address: editStaffForm.address,
         cap_hour: editStaffForm.cap_hour,
+        bank_account_number: editStaffForm.bank_account_number,
+        bank_branch_code: editStaffForm.bank_branch_code,
       },
     });
   };
@@ -457,6 +465,14 @@ const StaffDirectory = () => {
                 <Label>Cap Hour</Label>
                 <Input value={newStaffForm.cap_hour} onChange={e => setNewStaffForm({ ...newStaffForm, cap_hour: e.target.value })} />
               </div>
+              <div className="space-y-2">
+                <Label>Bank Account Number</Label>
+                <Input value={newStaffForm.bank_account_number} onChange={e => setNewStaffForm({ ...newStaffForm, bank_account_number: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Bank Branch Code</Label>
+                <Input value={newStaffForm.bank_branch_code} onChange={e => setNewStaffForm({ ...newStaffForm, bank_branch_code: e.target.value })} />
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowAddStaffDialog(false)}>
@@ -585,6 +601,14 @@ const StaffDirectory = () => {
               <div className="space-y-2">
                 <Label>Cap Hour</Label>
                 <Input value={editStaffForm.cap_hour} onChange={e => setEditStaffForm({ ...editStaffForm, cap_hour: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Bank Account Number</Label>
+                <Input value={editStaffForm.bank_account_number} onChange={e => setEditStaffForm({ ...editStaffForm, bank_account_number: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Bank Branch Code</Label>
+                <Input value={editStaffForm.bank_branch_code} onChange={e => setEditStaffForm({ ...editStaffForm, bank_branch_code: e.target.value })} />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-4">
