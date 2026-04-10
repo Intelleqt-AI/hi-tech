@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Calendar, Clock, AlertTriangle, CheckCircle, Edit, Upload, Users, CalendarIcon, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, CheckCircle, Edit, Upload, Users, CalendarIcon, ChevronLeft, ChevronRight, Search, Download } from 'lucide-react';
 // import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
@@ -313,6 +313,30 @@ const TimeAttendanceTab = () => {
   const totalPages = getTotalPages();
   const totalStaff = data?.summary?.total_staff || 0;
 
+  const handleDownload = () => {
+    const records = getFilteredRecords();
+    const headers = ['Staff Name', 'Employee Type', 'Clock No', 'Total Hours', 'Date'];
+    const escape = (v: string | number | null | undefined) => {
+      const s = String(v ?? '');
+      return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = records.map((r: { staff_details?: { full_name?: string; employee_type?: string; clock_number?: string | number }; total_hours?: number }) => [
+      r.staff_details?.full_name,
+      r.staff_details?.employee_type || 'Permanent',
+      r.staff_details?.clock_number,
+      r.total_hours,
+      selectedDate,
+    ].map(escape).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `attendance-${selectedDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSubmit = () => {
     if (isCsvMode) {
       if (!csvFile) {
@@ -519,6 +543,16 @@ const TimeAttendanceTab = () => {
                 className="pl-7 h-8 text-xs w-52"
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              disabled={!data?.records?.length}
+              className="h-8 text-xs"
+            >
+              <Download className="h-3.5 w-3.5 mr-1" />
+              Download CSV
+            </Button>
             <span className="text-xs text-gray-600">
               {selectedDate ? new Date(selectedDate).toLocaleDateString() : new Date().toLocaleDateString()}
             </span>

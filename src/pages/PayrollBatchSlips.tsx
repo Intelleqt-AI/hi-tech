@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,13 +13,75 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import useFetch from '@/hooks/useFetch';
+import { fetchData } from '@/lib/Api';
 
 const PAGE_SIZE = 20;
+
+const CSV_HEADERS = [
+  'Staff Name',
+  'Clock No',
+  'Department',
+  'Position',
+  'Capped Hrs',
+  'Rate/hr',
+  'Total Hrs',
+  'Weekend Hrs',
+  'Paid Hrs',
+  'Bonus',
+  'Other Deductions',
+  'Loan Deduction',
+  'Gross Salary',
+  'Net Salary',
+];
+
+interface Slip {
+  id: number;
+  staff_name: string;
+  staff_clock_number: string;
+  staff_department: string;
+  staff_position: string;
+  capped_hours_snapshot: string;
+  hourly_rate_snapshot: string;
+  total_worked_hours: string;
+  weekend_hours: string;
+  paid_hours: string;
+  bonus_added: string;
+  other_deductions: string;
+  loan_deduction: string;
+  gross_salary: string;
+  net_salary: string;
+}
+
+const slipToRow = (slip: Slip) => [
+  slip.staff_name,
+  slip.staff_clock_number,
+  slip.staff_department?.replace('_', ' '),
+  slip.staff_position,
+  slip.capped_hours_snapshot,
+  slip.hourly_rate_snapshot,
+  slip.total_worked_hours,
+  slip.weekend_hours,
+  slip.paid_hours,
+  slip.bonus_added,
+  slip.other_deductions,
+  slip.loan_deduction,
+  slip.gross_salary,
+  slip.net_salary,
+];
+
+const toCSV = (rows: (string | number | null | undefined)[][]) => {
+  const escape = (v: string | number | null | undefined) => {
+    const s = String(v ?? '');
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [CSV_HEADERS, ...rows].map(r => r.map(escape).join(',')).join('\n');
+};
 
 const PayrollBatchSlips = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const { data, isLoading } = useFetch(
     `staff/payroll-batches/${id}/slips/?page=${currentPage}&page_size=${PAGE_SIZE}`
@@ -32,18 +94,49 @@ const PayrollBatchSlips = () => {
   const fmt = (val: string | number) =>
     `R ${parseFloat(val as string).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      const allData = await fetchData(
+        `staff/payroll-batches/${id}/slips/?page=1&page_size=${totalCount || 9999}`
+      );
+      const rows = ((allData?.results ?? []) as Slip[]).map(slipToRow);
+      const csv = toCSV(rows);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `payroll-batch-${id}-slips.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <div>
-          <h1 className="text-xl font-bold">Payroll Slips</h1>
-          <p className="text-sm text-muted-foreground">Batch #{id}</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold">Payroll Slips</h1>
+            <p className="text-sm text-muted-foreground">Batch #{id}</p>
+          </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownload}
+          disabled={isDownloading || isLoading || totalCount === 0}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          {isDownloading ? 'Downloading...' : 'Download CSV'}
+        </Button>
       </div>
 
       {/* Table */}
@@ -79,7 +172,7 @@ const PayrollBatchSlips = () => {
                       ))}
                     </tr>
                   ))
-                : slips.map((slip: any) => (
+                : slips.map((slip: Slip) => (
                     <tr key={slip.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                       <td className="py-2 px-4">
                         <p className="font-medium text-blue-600 text-xs">{slip.staff_name}</p>
