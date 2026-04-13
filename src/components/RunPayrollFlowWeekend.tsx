@@ -49,50 +49,46 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
   // Calculate dynamic fortnightly pay periods based on actual time records
   const calculatePayPeriods = () => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    // Base period starts June 18, 2025 (2-week cycles)
-    const basePeriodStart = new Date('2025-06-18');
-
-    // Calculate how many periods have passed since base period
-    const daysDiff = Math.floor((today.getTime() - basePeriodStart.getTime()) / (1000 * 60 * 60 * 24));
-    const periodsPassed = Math.floor(daysDiff / 14);
-
-    const periods = [];
-
-    const formatDate = (date: Date) => {
+    const fmt = (date: Date) => {
       const month = date.toLocaleDateString('en-US', { month: 'short' });
-      const day = date.getDate();
-      return `${month} ${day}`;
+      return `${month} ${date.getDate()}`;
     };
 
-    const addDays = (date: Date, days: number) => {
-      const newDate = new Date(date);
-      newDate.setDate(newDate.getDate() + days);
-      return newDate;
+    const toISO = (date: Date) => date.toISOString().split('T')[0];
+
+    const addDays = (date: Date, n: number) => {
+      const d = new Date(date);
+      d.setDate(d.getDate() + n);
+      return d;
     };
 
-    // Helper to push period info
-    const pushPeriod = (id: number, start: Date, status: string) => {
-      const end = addDays(start, 13);
-      const payDate = addDays(end, 1); // Next day after endDate
+    // Find the most recent Sunday on or before today
+    const dayOfWeek = today.getDay(); // 0=Sun, 5=Fri, 6=Sat
+    const daysToLastSunday = dayOfWeek === 0 ? 0 : dayOfWeek;
+    const lastSunday = addDays(today, -daysToLastSunday);
+
+    // Build last 3 Fri–Sun weekends (most recent first, then reverse for display order)
+    const periods = [];
+    for (let i = 0; i < 3; i++) {
+      const sunday = addDays(lastSunday, -i * 7);
+      const friday = addDays(sunday, -2);
+      const payDate = addDays(sunday, 1);
 
       periods.push({
-        id,
-        dates: `${formatDate(start)}-${formatDate(end)}`,
+        id: i + 1,
+        dates: `${fmt(friday)}-${fmt(sunday)}`,
         status: 'ready-for-payroll',
-        days: 14,
-        startDate: start.toISOString().split('T')[0],
-        endDate: end.toISOString().split('T')[0],
-        payDate: payDate.toISOString().split('T')[0],
+        days: 3,
+        startDate: toISO(friday),
+        endDate: toISO(sunday),
+        payDate: toISO(payDate),
       });
-    };
+    }
 
-    // Previous, current, next
-    pushPeriod(1, addDays(basePeriodStart, (periodsPassed - 1) * 14), 'complete');
-    pushPeriod(2, addDays(basePeriodStart, periodsPassed * 14), 'current');
-    pushPeriod(3, addDays(basePeriodStart, (periodsPassed + 1) * 14), 'upcoming');
-
-    return periods;
+    // Reverse so oldest is first in the list
+    return periods.reverse();
   };
 
   // Initialize available periods based on actual time records
@@ -105,14 +101,14 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
         // Set all available periods (previous, current, upcoming)
         setAvailablePeriods(calculatedPeriods);
 
-        // ✅ Optionally, set current period as default
-        const current = calculatedPeriods.find(p => p.status === 'current');
-        if (current) {
-          setSelectedPeriodId(current.id);
+        // Default to the most recent weekend (last in the list)
+        const mostRecent = calculatedPeriods[calculatedPeriods.length - 1];
+        if (mostRecent) {
+          setSelectedPeriodId(mostRecent.id);
           setPayPeriod({
-            start_date: current.startDate,
-            end_date: current.endDate,
-            pay_date: current.payDate,
+            start_date: mostRecent.startDate,
+            end_date: mostRecent.endDate,
+            pay_date: mostRecent.payDate,
           });
         }
       } catch (error) {
