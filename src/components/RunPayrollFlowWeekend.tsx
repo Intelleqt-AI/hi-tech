@@ -561,7 +561,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
                 <TableHead>Rate p/hr</TableHead>
                 <TableHead>Bonus</TableHead>
                 <TableHead>Total worked hours</TableHead>
-                <TableHead>Total off weekend hours</TableHead>
+                {/* <TableHead>Total off weekend hours</TableHead> */}
                 <TableHead>Total paid hours</TableHead>
                 <TableHead>Other Deductions</TableHead>
                 <TableHead>Loans</TableHead>
@@ -594,7 +594,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
                       />
                     </TableCell>
                     <TableCell className="font-medium">{Math.floor(calc.total_worked_hours || 0)}h</TableCell>
-                    <TableCell className="text-orange-600">{Math.floor(calc.total_weekend_hours || 0)}h</TableCell>
+                    {/* <TableCell className="text-orange-600">{Math.floor(calc.total_weekend_hours || 0)}h</TableCell> */}
                     <TableCell className="text-red-600">{Math.floor(calc.total_paid_hours || 0)}h</TableCell>
                     <TableCell>
                       <Input
