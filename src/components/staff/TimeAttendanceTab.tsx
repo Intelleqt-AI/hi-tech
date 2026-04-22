@@ -27,11 +27,13 @@ import {
 } from '@/components/ui/pagination';
 import { format } from 'date-fns';
 import useFetch from '@/hooks/useFetch';
+import { fetchData } from '@/lib/Api';
 
 const TimeAttendanceTab = () => {
   const [selectedPeriod, setSelectedPeriod] = useState(2);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [isSessionDownloading, setIsSessionDownloading] = useState(false);
   const [pasteData, setPasteData] = useState('');
   const [uploadPeriodId, setUploadPeriodId] = useState<number | undefined>(undefined);
   const [dailyStaffData, setDailyStaffData] = useState<any>({});
@@ -337,6 +339,37 @@ const TimeAttendanceTab = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleSessionDownload = async (startDate: string, endDate: string) => {
+    setIsSessionDownloading(true);
+    try {
+      const result = await fetchData(`/atg/attendance/staff-select-wage-report/?start_date=${startDate}&end_date=${endDate}`);
+      const records: any[] = result?.staff ?? result?.records ?? [];
+      const escape = (v: string | number | null | undefined) => {
+        const s = String(v ?? '');
+        return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const headers = ['Staff Name', 'Employee Type', 'Clock No', 'Total Hours'];
+      const rows = records.map((r: any) => [
+        r.full_name,
+        r.employee_type || 'Permanent',
+        r.clock_number,
+        r.total_hours,
+      ].map(escape).join(','));
+      const csv = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attendance-session-${startDate}-to-${endDate}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to download session report', variant: 'destructive' });
+    } finally {
+      setIsSessionDownloading(false);
+    }
+  };
+
   const handleSubmit = () => {
     if (isCsvMode) {
       if (!csvFile) {
@@ -552,6 +585,19 @@ const TimeAttendanceTab = () => {
             >
               <Download className="h-3.5 w-3.5 mr-1" />
               Download CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSessionDownload(
+                selectedPeriodData?.startDate ?? '',
+                selectedPeriodData?.endDate ?? ''
+              )}
+              disabled={isSessionDownloading}
+              className="h-8 text-xs"
+            >
+              <Download className="h-3.5 w-3.5 mr-1" />
+              {isSessionDownloading ? 'Downloading...' : 'Download Session'}
             </Button>
             <span className="text-xs text-gray-600">
               {selectedDate ? new Date(selectedDate).toLocaleDateString() : new Date().toLocaleDateString()}
