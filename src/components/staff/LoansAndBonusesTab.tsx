@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock } from 'lucide-react';
+import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import useFetch from '@/hooks/useFetch';
@@ -75,6 +75,18 @@ const LoansAndBonusesTab = () => {
     start_date: new Date().toISOString().split('T')[0],
     notes: ''
   });
+
+  const [loanDocuments, setLoanDocuments] = useState<File[]>([]);
+
+  const handleLoanDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setLoanDocuments(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const removeLoanDocument = (index: number) => {
+    setLoanDocuments(prev => prev.filter((_, i) => i !== index));
+  };
 
   const [bonusForm, setBonusForm] = useState({
     employee_id: '',
@@ -296,7 +308,7 @@ const LoansAndBonusesTab = () => {
                   New Loan
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingLoan ? 'Edit Loan' : 'Create New Loan'}</DialogTitle>
                 </DialogHeader>
@@ -419,6 +431,42 @@ const LoansAndBonusesTab = () => {
                       </p>
                     </div>
                   )}
+
+                  <div>
+                    <Label>Supporting Documents</Label>
+                    <div
+                      className="mt-1 border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                      onClick={() => document.getElementById('loan-doc-upload')?.click()}
+                    >
+                      <Paperclip className="mx-auto h-6 w-6 text-gray-400 mb-1" />
+                      <p className="text-sm text-gray-500">Click to attach documents</p>
+                      <p className="text-xs text-gray-400">PDF, PNG, JPG up to 10MB each</p>
+                      <input
+                        id="loan-doc-upload"
+                        type="file"
+                        multiple
+                        accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                        className="hidden"
+                        onChange={handleLoanDocumentChange}
+                      />
+                    </div>
+                    {loanDocuments.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {loanDocuments.map((file, index) => (
+                          <li key={index} className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-1.5">
+                            <div className="flex items-center gap-2 truncate">
+                              <FileText className="h-4 w-4 text-gray-400 shrink-0" />
+                              <span className="truncate text-gray-700">{file.name}</span>
+                              <span className="text-gray-400 text-xs shrink-0">({(file.size / 1024).toFixed(0)} KB)</span>
+                            </div>
+                            <button type="button" onClick={() => removeLoanDocument(index)} className="ml-2 text-gray-400 hover:text-red-500 shrink-0">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
 
                   <div className="flex gap-2">
                     <Button type="submit" className="flex-1">

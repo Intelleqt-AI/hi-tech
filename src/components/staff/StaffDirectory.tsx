@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Filter, Mail, Phone, DollarSign, Download, Upload } from 'lucide-react';
+import { Plus, Search, Filter, Mail, Phone, DollarSign, Download, Upload, Paperclip, X, FileText } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -102,6 +102,18 @@ const StaffDirectory = () => {
     bank_account_number: '',
     bank_branch_code: '',
   });
+
+  const [staffDocuments, setStaffDocuments] = useState<File[]>([]);
+
+  const handleStaffDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setStaffDocuments(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const removeStaffDocument = (index: number) => {
+    setStaffDocuments(prev => prev.filter((_, i) => i !== index));
+  };
 
   const [editStaffForm, setEditStaffForm] = useState({
     id: '',
@@ -351,7 +363,7 @@ const StaffDirectory = () => {
 
       {/* Add Staff Dialog */}
       <Dialog open={showAddStaffDialog} onOpenChange={setShowAddStaffDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Staff Member</DialogTitle>
           </DialogHeader>
@@ -474,6 +486,42 @@ const StaffDirectory = () => {
                 <Input value={newStaffForm.bank_branch_code} onChange={e => setNewStaffForm({ ...newStaffForm, bank_branch_code: e.target.value })} />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Documents</Label>
+              <div
+                className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                onClick={() => document.getElementById('staff-doc-upload')?.click()}
+              >
+                <Paperclip className="mx-auto h-6 w-6 text-gray-400 mb-1" />
+                <p className="text-sm text-gray-500">Click to attach documents</p>
+                <p className="text-xs text-gray-400">PDF, PNG, JPG, DOC up to 10MB each</p>
+                <input
+                  id="staff-doc-upload"
+                  type="file"
+                  multiple
+                  accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                  className="hidden"
+                  onChange={handleStaffDocumentChange}
+                />
+              </div>
+              {staffDocuments.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {staffDocuments.map((file, index) => (
+                    <li key={index} className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-1.5">
+                      <div className="flex items-center gap-2 truncate">
+                        <FileText className="h-4 w-4 text-gray-400 shrink-0" />
+                        <span className="truncate text-gray-700">{file.name}</span>
+                        <span className="text-gray-400 text-xs shrink-0">({(file.size / 1024).toFixed(0)} KB)</span>
+                      </div>
+                      <button type="button" onClick={() => removeStaffDocument(index)} className="ml-2 text-gray-400 hover:text-red-500 shrink-0">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowAddStaffDialog(false)}>
                 Cancel
