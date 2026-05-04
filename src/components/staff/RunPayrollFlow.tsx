@@ -470,7 +470,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
 
   // Format currency with commas
   const formatCurrency = (amount: number) => {
-    return `R ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `R ${amount.toLocaleString('en-US', {})}`;
   };
 
   // Update bonus for employee
@@ -550,7 +550,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
             <div className="grid grid-cols-5 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold">
-                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.gross_pay, 0))}
+                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + Math.round(calc.gross_pay), 0))}
                 </div>
                 <div className="text-sm text-muted-foreground">Total Gross</div>
               </div>
@@ -574,7 +574,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.net_pay, 0))}
+                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + Math.round(calc.net_pay), 0))}
                 </div>
                 <div className="text-sm text-muted-foreground">Total Net</div>
               </div>
@@ -654,7 +654,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
                       />
                     </TableCell> */}
                     <TableCell className="font-medium">{formatCurrency(calc.loan_deductions)}</TableCell>
-                    <TableCell className="font-bold text-green-600">{formatCurrency(calc.net_pay)}</TableCell>
+                    <TableCell className="font-bold text-green-600">{formatCurrency(Math.round(calc.net_pay))}</TableCell>
                   </TableRow>
                 );
               })}
@@ -666,7 +666,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
             <div className="grid grid-cols-5 gap-4 text-center">
               <div>
                 <div className="text-lg font-bold">
-                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.gross_pay, 0))}
+                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + Math.round(calc.gross_pay), 0))}
                 </div>
                 <div className="text-sm text-muted-foreground">Total Gross</div>
               </div>
@@ -690,7 +690,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
               </div>
               <div>
                 <div className="text-lg font-bold text-green-600">
-                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + calc.net_pay, 0))}
+                  {formatCurrency(payRollInfo.reduce((sum: any, calc: any) => sum + Math.round(calc.net_pay), 0))}
                 </div>
                 <div className="text-sm text-muted-foreground">Total Net</div>
               </div>
@@ -731,7 +731,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
                 </div>
                 <div className="flex justify-between font-medium">
                   <span>Total Net Pay:</span>
-                  <span className="text-green-600">R{payRollInfo.reduce((sum, calc) => sum + calc.net_pay, 0).toFixed(2)}</span>
+                  <span className="text-green-600">R{payRollInfo.reduce((sum, calc) => sum + Math.round(calc.net_pay), 0)}</span>
                 </div>
               </div>
             </div>
