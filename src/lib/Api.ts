@@ -141,7 +141,7 @@ export const patchData = async ({ url, data }) => {
     const response = await api.patch(url, data);
     return response.data;
   } catch (error) {
-    handleError(error);
+    throw error;
   }
 };
 

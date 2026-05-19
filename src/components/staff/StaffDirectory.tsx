@@ -86,8 +86,8 @@ const staffSchema = z.object({
   factory:       z.enum(FACTORY_VALUES),
 
   // Optional — CharField blank=True null=True
-  clock_number:        z.string().max(50, 'Max 50 characters').optional().or(z.literal('')),
-  phone_number:        z.string().max(20, 'Max 20 characters').optional().or(z.literal('')),
+  clock_number:        z.string().min(1, 'Required').max(50, 'Max 50 characters'),
+  phone_number:        z.string().min(1, 'Required').max(20, 'Max 20 characters'),
   address:             z.string().optional().or(z.literal('')),
   bank_account_number: z.string().max(50, 'Max 50 characters').optional().or(z.literal('')),
   bank_branch_code:    z.string().max(20, 'Max 20 characters').optional().or(z.literal('')),
@@ -168,6 +168,22 @@ const StaffDirectory = () => {
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
+  const applyServerErrors = (form: ReturnType<typeof useForm<StaffFormData>>, error: any) => {
+    const data = error?.response?.data;
+    if (!data || typeof data !== 'object') {
+      toast({ title: 'Error', description: error?.message || 'Request failed', variant: 'destructive' });
+      return;
+    }
+    for (const [key, messages] of Object.entries(data)) {
+      const msg = Array.isArray(messages) ? (messages[0] as string) : String(messages);
+      if (key === 'non_field_errors' || key === 'detail') {
+        toast({ title: 'Error', description: msg, variant: 'destructive' });
+      } else {
+        form.setError(key as any, { type: 'server', message: msg });
+      }
+    }
+  };
+
   const { mutate: addStaff, isPending: isAdding } = usePost({
     onSuccess: () => {
       toast({ title: 'Success', description: 'Staff member added successfully' });
@@ -177,7 +193,7 @@ const StaffDirectory = () => {
       refetch();
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message || 'Failed to add staff', variant: 'destructive' });
+      applyServerErrors(addForm, error);
     },
   });
 
@@ -199,7 +215,7 @@ const StaffDirectory = () => {
       refetch();
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message || 'Failed to update staff', variant: 'destructive' });
+      applyServerErrors(editForm, error);
     },
   });
 
@@ -334,16 +350,16 @@ const StaffDirectory = () => {
           <FieldError message={errors.position?.message} />
         </div>
 
-        {/* Clock Number — optional CharField max 50 */}
+        {/* Clock Number — required CharField max 50 */}
         <div className="space-y-2">
-          <Label>Clock Number</Label>
+          <Label>Clock Number <span className="text-destructive">*</span></Label>
           <Input {...register('clock_number')} />
           <FieldError message={errors.clock_number?.message} />
         </div>
 
-        {/* Phone Number — optional CharField max 20 */}
+        {/* Phone Number — required CharField max 20 */}
         <div className="space-y-2">
-          <Label>Phone Number</Label>
+          <Label>Phone Number <span className="text-destructive">*</span></Label>
           <Input {...register('phone_number')} />
           <FieldError message={errors.phone_number?.message} />
         </div>
