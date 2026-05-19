@@ -31,6 +31,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
   /* const [timeRecords, setTimeRecords] = useState<TimeRecord[]>([]); */
   /* const [payrollCalculations, setPayrollCalculations] = useState<PayrollCalculation[]>([]); */
   const [payRollInfo, setPayRollInfo] = useState<any>([]);
+  const [weekendBatchFound, setWeekendBatchFound] = useState<boolean>(true);
   const [availablePeriods, setAvailablePeriods] = useState<any[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>('');
   const [selectedStaffType, setSelectedStaffType] = useState<string>('permanent');
@@ -187,6 +188,9 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
 
   // Sync payroll details from API to state
   useEffect(() => {
+    if (payrollDetails) {
+      setWeekendBatchFound(payrollDetails.weekend_batch_found ?? true);
+    }
     if (payrollDetails?.staff) {
       const mappedEmployees = payrollDetails.staff.map((emp: any) => {
         // Map API fields to internal state
@@ -584,6 +588,16 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
           </CardContent>
         </Card>
       </div>
+
+      {!weekendBatchFound && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
+          <span className="mt-0.5 text-lg">⚠️</span>
+          <div>
+            <p className="font-semibold">Weekend Payroll not saved for this period</p>
+            <p className="text-sm">Weekend hours have not been deducted. Save the Weekend Payroll for this date range first, then reload General Payroll to apply the correct deductions.</p>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader className="pb-3">

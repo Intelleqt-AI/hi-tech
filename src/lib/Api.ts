@@ -1,23 +1,23 @@
 export const fetchEntries = async ({ date_from, date_to, selectedDate }) => {
   const body = selectedDate
     ? {
-      clock_number: '',
-      date: selectedDate,
-      date_from: '',
-      date_to: '',
-      timezone: '',
-      limit: 100,
-      offset: 0,
-    }
+        clock_number: '',
+        date: selectedDate,
+        date_from: '',
+        date_to: '',
+        timezone: '',
+        limit: 100,
+        offset: 0,
+      }
     : {
-      clock_number: '',
-      date: '',
-      date_from,
-      date_to,
-      timezone: '',
-      limit: 100,
-      offset: 0,
-    };
+        clock_number: '',
+        date: '',
+        date_from,
+        date_to,
+        timezone: '',
+        limit: 100,
+        offset: 0,
+      };
 
   try {
     const response = await api.post('api/entries', body);
@@ -43,7 +43,6 @@ export const fetchHours = async ({ date_from, date_to }) => {
     throw new Error('Network response was not ok');
   }
 };
-
 
 // ========================
 import axios from 'axios';
@@ -124,7 +123,6 @@ export const deleteData = async ({ url, data }) => {
   }
 };
 
-
 export const putData = async ({ url, data }) => {
   if (!url) throw new Error('No put URL provided');
   try {
@@ -141,7 +139,7 @@ export const patchData = async ({ url, data }) => {
     const response = await api.patch(url, data);
     return response.data;
   } catch (error) {
-    throw error;
+    handleError(error);
   }
 };
 
@@ -149,7 +147,7 @@ export const loginUser = async ({ email, password }: { email: string; password: 
   try {
     const res = await api.post('users/token/', {
       email,
-      password
+      password,
     });
     return res.data; // { access, refresh }
   } catch (error: any) {
@@ -173,9 +171,6 @@ export const registerUser = async (data: RegisterUserData) => {
     throw error;
   }
 };
-
-
-
 
 export const refreshToken = async (refresh: string) => {
   const res = await api.post('users/token/refresh/', { refresh });
@@ -213,7 +208,6 @@ api.interceptors.response.use(
         originalRequest.headers['Authorization'] = 'Bearer ' + newAccess;
 
         return api(originalRequest);
-
       } catch (refreshError) {
         // If refresh fails → logout gracefully
         localStorage.clear();
@@ -223,5 +217,5 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
