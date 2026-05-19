@@ -14,6 +14,9 @@ import {
 } from '@/components/ui/alert-dialog';
 
 import { useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,19 +24,13 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Filter, Mail, Phone, DollarSign, Download, Upload, Paperclip, X, FileText } from 'lucide-react';
+import { Plus, Search, Mail, DollarSign, Paperclip, X, FileText } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
 import { Textarea } from '../ui/textarea';
+
+// ─── Choices (must match backend model exactly) ───────────────────────────────
 
 const EMPLOYEE_TYPE_CHOICES = [
   { value: 'permanent', label: 'Permanent' },
@@ -64,6 +61,74 @@ const DEPARTMENT_CHOICES = [
   { value: 'Bobbin_Burners', label: 'Bobbin Burners' },
 ];
 
+// ─── Zod schema — mirrors backend StaffCreateUpdateSerializer + model constraints ─
+
+const EMPLOYEE_TYPE_VALUES = ['permanent', 'casual'] as const;
+const FACTORY_VALUES = ['RANDM', 'hitec', 'CASUALS', 'YOUTH_WORK'] as const;
+const DEPARTMENT_VALUES = [
+  'unit_1', 'unit_2', 'Looms', 'Cutting', 'unit_3', 'unit_6', 'General',
+  'Extruder', 'Reel_to_Reel', 'Printing', 'Supervisor', 'Bailing', 'unit_5', 'Bobbin_Burners',
+] as const;
+
+const toOptionalNumber = (v: unknown) =>
+  v === '' || v === null || v === undefined ? undefined : Number(v);
+
+const staffSchema = z.object({
+  // Required — CharField no blank/null
+  first_name: z.string().min(1, 'Required').max(100, 'Max 100 characters'),
+  last_name:  z.string().min(1, 'Required').max(100, 'Max 100 characters'),
+  email:      z.string().min(1, 'Required').email('Invalid email address'),
+  position:   z.string().min(1, 'Required').max(100, 'Max 100 characters'),
+
+  // Required with choices — CharField with choices
+  department:    z.enum(DEPARTMENT_VALUES, { errorMap: () => ({ message: 'Select a department' }) }),
+  employee_type: z.enum(EMPLOYEE_TYPE_VALUES),
+  factory:       z.enum(FACTORY_VALUES),
+
+  // Optional — CharField blank=True null=True
+  clock_number:        z.string().max(50, 'Max 50 characters').optional().or(z.literal('')),
+  phone_number:        z.string().max(20, 'Max 20 characters').optional().or(z.literal('')),
+  address:             z.string().optional().or(z.literal('')),
+  bank_account_number: z.string().max(50, 'Max 50 characters').optional().or(z.literal('')),
+  bank_branch_code:    z.string().max(20, 'Max 20 characters').optional().or(z.literal('')),
+
+  // Optional decimals — DecimalField with default=0.00
+  hourly_rate: z.preprocess(
+    toOptionalNumber,
+    z.number({ invalid_type_error: 'Must be a number' }).min(0, 'Must be ≥ 0').optional(),
+  ),
+  cap_hour: z.preprocess(
+    toOptionalNumber,
+    z.number({ invalid_type_error: 'Must be a number' }).min(0, 'Must be ≥ 0').optional(),
+  ),
+});
+
+type StaffFormData = z.infer<typeof staffSchema>;
+
+const ADD_DEFAULTS: StaffFormData = {
+  first_name: '',
+  last_name: '',
+  email: '',
+  position: '',
+  department: 'unit_1',
+  employee_type: 'permanent',
+  factory: 'hitec',
+  clock_number: '',
+  phone_number: '',
+  address: '',
+  bank_account_number: '',
+  bank_branch_code: '',
+  hourly_rate: undefined,
+  cap_hour: undefined,
+};
+
+// ─── Small helper ─────────────────────────────────────────────────────────────
+
+const FieldError = ({ message }: { message?: string }) =>
+  message ? <p className="text-destructive text-xs mt-1">{message}</p> : null;
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 const StaffDirectory = () => {
   const { data: employees, isLoading, refetch } = useFetch('/staff/members/');
   const [searchTerm, setSearchTerm] = useState('');
@@ -71,12 +136,13 @@ const StaffDirectory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [payrollHistory, setPayrollHistory] = useState([]);
-  const [timeRecords, setTimeRecords] = useState([]);
-  const [loanDetails, setLoanDetails] = useState([]);
+  const [payrollHistory] = useState([]);
+  const [timeRecords] = useState([]);
+  const [loanDetails] = useState([]);
   const [showLoanDialog, setShowLoanDialog] = useState(false);
   const [showAddStaffDialog, setShowAddStaffDialog] = useState(false);
   const [showEditStaffDialog, setShowEditStaffDialog] = useState(false);
+  const [editStaffId, setEditStaffId] = useState<string | null>(null);
   const [loanForm, setLoanForm] = useState({
     loan_type: '',
     original_amount: '',
@@ -85,74 +151,29 @@ const StaffDirectory = () => {
     notes: '',
   });
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  const [newStaffForm, setNewStaffForm] = useState({
-    clock_number: '',
-    first_name: '',
-    last_name: '',
-    employee_type: 'permanent',
-    factory: 'hitec',
-    department: 'unit_1',
-    position: '',
-    hourly_rate: '',
-    email: '',
-    phone_number: '',
-    address: '',
-    cap_hour: '',
-    bank_account_number: '',
-    bank_branch_code: '',
-  });
-
   const [staffDocuments, setStaffDocuments] = useState<File[]>([]);
 
-  const handleStaffDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setStaffDocuments(prev => [...prev, ...Array.from(e.target.files!)]);
-    }
-  };
+  // ── React Hook Form instances ──────────────────────────────────────────────
 
-  const removeStaffDocument = (index: number) => {
-    setStaffDocuments(prev => prev.filter((_, i) => i !== index));
-  };
+  const addForm = useForm<StaffFormData>({
+    resolver: zodResolver(staffSchema),
+    defaultValues: ADD_DEFAULTS,
+  });
 
-  const [editStaffForm, setEditStaffForm] = useState({
-    id: '',
-    clock_number: '',
-    first_name: '',
-    last_name: '',
-    employee_type: 'permanent',
-    factory: 'hitec',
-    department: 'unit_1',
-    position: '',
-    hourly_rate: '',
-    email: '',
-    phone_number: '',
-    address: '',
-    cap_hour: '',
-    bank_account_number: '',
-    bank_branch_code: '',
+  const editForm = useForm<StaffFormData>({
+    resolver: zodResolver(staffSchema),
   });
 
   const { toast } = useToast();
+
+  // ── Mutations ─────────────────────────────────────────────────────────────
 
   const { mutate: addStaff, isPending: isAdding } = usePost({
     onSuccess: () => {
       toast({ title: 'Success', description: 'Staff member added successfully' });
       setShowAddStaffDialog(false);
-      // Reset form
-      setNewStaffForm({
-        clock_number: '',
-        first_name: '',
-        last_name: '',
-        employee_type: 'permanent',
-        factory: 'hitec',
-        department: 'unit_1',
-        position: '',
-        hourly_rate: '',
-        email: '',
-        phone_number: '',
-        address: '',
-      });
+      addForm.reset(ADD_DEFAULTS);
+      setStaffDocuments([]);
       refetch();
     },
     onError: (error: any) => {
@@ -182,11 +203,9 @@ const StaffDirectory = () => {
     },
   });
 
-  const itemsPerPage = 20;
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const getStatusColor = (isActive: boolean) => {
-    return isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
-  };
+  const itemsPerPage = 20;
 
   const filteredStaff =
     employees?.filter((employee: any) => {
@@ -196,97 +215,51 @@ const StaffDirectory = () => {
         fullName.includes(searchLower) ||
         employee.clock_number?.toLowerCase().includes(searchLower) ||
         employee.email?.toLowerCase().includes(searchLower);
-
       const matchesType = filterType === 'all' || employee.employee_type?.toLowerCase() === filterType.toLowerCase();
-
       return matchesSearch && matchesType;
     }) || [];
 
   const totalPages = Math.ceil(filteredStaff.length / itemsPerPage);
   const startIdx = (currentPage - 1) * itemsPerPage;
-  const paginatedStaff = filteredStaff.slice(startIdx, startIdx + itemsPerPage);
 
-  const handleRowClick = async employee => {
+  const handleRowClick = (employee: any) => {
     setSelectedEmployee(employee);
     setShowDetails(true);
   };
 
-  const handleAddLoan = async () => {
-    // Loan functionality removed for this refactor as Supabase is removed
+  const handleAddLoan = () => {
     toast({ title: 'Info', description: 'Loan functionality is temporarily disabled.' });
   };
 
-  const handleExportCSV = () => {
-    console.log('Exporting staff directory to CSV...');
-  };
-
-  const handleAddNewStaff = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!newStaffForm.first_name || !newStaffForm.last_name || !newStaffForm.clock_number) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Please fill in all required fields',
-      });
-      return;
-    }
-
-    addStaff({
-      url: '/staff/members/',
-      data: newStaffForm,
-    });
-  };
+  const handleAddNewStaff = addForm.handleSubmit((data) => {
+    addStaff({ url: '/staff/members/', data });
+  });
 
   const handleEditStaff = (employee: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    setEditStaffForm({
-      id: employee.id,
-      clock_number: employee.clock_number || '',
-      first_name: employee.first_name || '',
-      last_name: employee.last_name || '',
-      employee_type: employee.employee_type?.toLowerCase() || 'permanent',
-      factory: employee.factory?.toLowerCase() || 'hitec',
-      department: employee.department?.toLowerCase() || 'unit_1',
-      position: employee.position || '',
-      hourly_rate: employee.hourly_rate || '',
-      email: employee.email || '',
-      phone_number: employee.phone_number || '',
-      address: employee.address || '',
-      cap_hour: employee.cap_hour || '',
+    setEditStaffId(employee.id);
+    editForm.reset({
+      clock_number:        employee.clock_number        || '',
+      first_name:          employee.first_name          || '',
+      last_name:           employee.last_name           || '',
+      employee_type:       employee.employee_type       || 'permanent',
+      factory:             employee.factory             || 'hitec',
+      department:          employee.department          || 'unit_1',
+      position:            employee.position            || '',
+      hourly_rate:         employee.hourly_rate         != null ? Number(employee.hourly_rate) : undefined,
+      email:               employee.email               || '',
+      phone_number:        employee.phone_number        || '',
+      address:             employee.address             || '',
+      cap_hour:            employee.cap_hour            != null ? Number(employee.cap_hour) : undefined,
       bank_account_number: employee.bank_account_number || '',
-      bank_branch_code: employee.bank_branch_code || '',
+      bank_branch_code:    employee.bank_branch_code    || '',
     });
     setShowEditStaffDialog(true);
   };
 
-  const handleUpdateStaff = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editStaffForm.first_name || !editStaffForm.last_name) {
-      toast({ title: 'Error', description: 'First and Last Name are required', variant: 'destructive' });
-      return;
-    }
-
-    editStaff({
-      url: `/staff/members/${editStaffForm.id}/`,
-      data: {
-        clock_number: editStaffForm.clock_number,
-        first_name: editStaffForm.first_name,
-        last_name: editStaffForm.last_name,
-        employee_type: editStaffForm.employee_type,
-        factory: editStaffForm.factory,
-        department: editStaffForm.department,
-        position: editStaffForm.position,
-        hourly_rate: editStaffForm.hourly_rate,
-        email: editStaffForm.email,
-        phone_number: editStaffForm.phone_number,
-        address: editStaffForm.address,
-        cap_hour: editStaffForm.cap_hour,
-        bank_account_number: editStaffForm.bank_account_number,
-        bank_branch_code: editStaffForm.bank_branch_code,
-      },
-    });
-  };
+  const handleUpdateStaff = editForm.handleSubmit((data) => {
+    editStaff({ url: `/staff/members/${editStaffId}/`, data });
+  });
 
   const confirmDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -294,19 +267,23 @@ const StaffDirectory = () => {
   };
 
   const handleDelete = () => {
-    if (deleteId) {
-      deleteStaff({
-        url: `/staff/members/${deleteId}/`,
-      });
-    }
+    if (deleteId) deleteStaff({ url: `/staff/members/${deleteId}/` });
   };
 
-  const formatDate = dateString => {
+  const handleStaffDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) setStaffDocuments(prev => [...prev, ...Array.from(e.target.files!)]);
+  };
+
+  const removeStaffDocument = (index: number) => {
+    setStaffDocuments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatDate = (dateString: any) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString();
   };
 
-  const formatCurrency = amount => {
+  const formatCurrency = (amount: any) => {
     if (!amount) return 'R0.00';
     return `R${parseFloat(amount).toFixed(2)}`;
   };
@@ -323,20 +300,160 @@ const StaffDirectory = () => {
     );
   }
 
+  // ── Shared form fields renderer (used for both Add and Edit) ───────────────
+
+  const renderFormFields = (form: ReturnType<typeof useForm<StaffFormData>>) => {
+    const { register, control, formState: { errors } } = form;
+    return (
+      <div className="grid grid-cols-2 gap-4">
+        {/* First Name — required CharField max 100 */}
+        <div className="space-y-2">
+          <Label>First Name <span className="text-destructive">*</span></Label>
+          <Input {...register('first_name')} />
+          <FieldError message={errors.first_name?.message} />
+        </div>
+
+        {/* Last Name — required CharField max 100 */}
+        <div className="space-y-2">
+          <Label>Last Name <span className="text-destructive">*</span></Label>
+          <Input {...register('last_name')} />
+          <FieldError message={errors.last_name?.message} />
+        </div>
+
+        {/* Email — required EmailField unique */}
+        <div className="space-y-2">
+          <Label>Email <span className="text-destructive">*</span></Label>
+          <Input type="email" {...register('email')} />
+          <FieldError message={errors.email?.message} />
+        </div>
+
+        {/* Position — required CharField max 100 */}
+        <div className="space-y-2">
+          <Label>Position <span className="text-destructive">*</span></Label>
+          <Input {...register('position')} />
+          <FieldError message={errors.position?.message} />
+        </div>
+
+        {/* Clock Number — optional CharField max 50 */}
+        <div className="space-y-2">
+          <Label>Clock Number</Label>
+          <Input {...register('clock_number')} />
+          <FieldError message={errors.clock_number?.message} />
+        </div>
+
+        {/* Phone Number — optional CharField max 20 */}
+        <div className="space-y-2">
+          <Label>Phone Number</Label>
+          <Input {...register('phone_number')} />
+          <FieldError message={errors.phone_number?.message} />
+        </div>
+
+        {/* Hourly Rate — optional DecimalField default 0 */}
+        <div className="space-y-2">
+          <Label>Hourly Rate</Label>
+          <Input type="number" step="0.01" min="0" {...register('hourly_rate')} />
+          <FieldError message={errors.hourly_rate?.message} />
+        </div>
+
+        {/* Cap Hour — optional DecimalField default 0 */}
+        <div className="space-y-2">
+          <Label>Cap Hour</Label>
+          <Input type="number" step="0.01" min="0" {...register('cap_hour')} />
+          <FieldError message={errors.cap_hour?.message} />
+        </div>
+
+        {/* Employee Type — required CharField with choices, default permanent */}
+        <div className="space-y-2">
+          <Label>Employee Type</Label>
+          <Controller
+            name="employee_type"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {EMPLOYEE_TYPE_CHOICES.map(c => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <FieldError message={errors.employee_type?.message} />
+        </div>
+
+        {/* Factory — required CharField with choices, default hitec */}
+        <div className="space-y-2">
+          <Label>Factory</Label>
+          <Controller
+            name="factory"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FACTORY_CHOICES.map(c => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <FieldError message={errors.factory?.message} />
+        </div>
+
+        {/* Department — required CharField with choices */}
+        <div className="space-y-2">
+          <Label>Department <span className="text-destructive">*</span></Label>
+          <Controller
+            name="department"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DEPARTMENT_CHOICES.map(c => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <FieldError message={errors.department?.message} />
+        </div>
+
+        {/* Address — optional TextField */}
+        <div className="space-y-2">
+          <Label>Address</Label>
+          <Input {...register('address')} />
+          <FieldError message={errors.address?.message} />
+        </div>
+
+        {/* Bank Account Number — optional CharField max 50 */}
+        <div className="space-y-2">
+          <Label>Bank Account Number</Label>
+          <Input {...register('bank_account_number')} />
+          <FieldError message={errors.bank_account_number?.message} />
+        </div>
+
+        {/* Bank Branch Code — optional CharField max 20 */}
+        <div className="space-y-2">
+          <Label>Bank Branch Code</Label>
+          <Input {...register('bank_branch_code')} />
+          <FieldError message={errors.bank_branch_code?.message} />
+        </div>
+      </div>
+    );
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-4">
-      {/* Header - Clients style */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Staff Directory</h3>
         <div className="flex items-center gap-2">
-          {/* <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-50" onClick={handleExportCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button> */}
-          {/* <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-50">
-            <Upload className="h-4 w-4 mr-2" />
-            Upload CSV
-          </Button> */}
           <Button onClick={() => setShowAddStaffDialog(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add new staff
@@ -344,6 +461,7 @@ const StaffDirectory = () => {
         </div>
       </div>
 
+      {/* Delete confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -368,124 +486,9 @@ const StaffDirectory = () => {
             <DialogTitle>Add New Staff Member</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddNewStaff} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>First Name</Label>
-                <Input
-                  value={newStaffForm.first_name}
-                  onChange={e => setNewStaffForm({ ...newStaffForm, first_name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Last Name</Label>
-                <Input
-                  value={newStaffForm.last_name}
-                  onChange={e => setNewStaffForm({ ...newStaffForm, last_name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Clock Number</Label>
-                <Input
-                  value={newStaffForm.clock_number}
-                  onChange={e => setNewStaffForm({ ...newStaffForm, clock_number: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={newStaffForm.email}
-                  onChange={e => setNewStaffForm({ ...newStaffForm, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Phone Number</Label>
-                <Input
-                  value={newStaffForm.phone_number}
-                  onChange={e => setNewStaffForm({ ...newStaffForm, phone_number: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Hourly Rate</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={newStaffForm.hourly_rate}
-                  onChange={e => setNewStaffForm({ ...newStaffForm, hourly_rate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Employee Type</Label>
-                <Select
-                  value={newStaffForm.employee_type}
-                  onValueChange={value => setNewStaffForm({ ...newStaffForm, employee_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EMPLOYEE_TYPE_CHOICES.map(choice => (
-                      <SelectItem key={choice.value} value={choice.value}>
-                        {choice.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Factory</Label>
-                <Select value={newStaffForm.factory} onValueChange={value => setNewStaffForm({ ...newStaffForm, factory: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FACTORY_CHOICES.map(choice => (
-                      <SelectItem key={choice.value} value={choice.value}>
-                        {choice.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Department</Label>
-                <Select value={newStaffForm.department} onValueChange={value => setNewStaffForm({ ...newStaffForm, department: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEPARTMENT_CHOICES.map(choice => (
-                      <SelectItem key={choice.value} value={choice.value}>
-                        {choice.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Position</Label>
-                <Input value={newStaffForm.position} onChange={e => setNewStaffForm({ ...newStaffForm, position: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Address</Label>
-                <Input value={newStaffForm.address} onChange={e => setNewStaffForm({ ...newStaffForm, address: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Cap Hour</Label>
-                <Input value={newStaffForm.cap_hour} onChange={e => setNewStaffForm({ ...newStaffForm, cap_hour: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Bank Account Number</Label>
-                <Input value={newStaffForm.bank_account_number} onChange={e => setNewStaffForm({ ...newStaffForm, bank_account_number: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Bank Branch Code</Label>
-                <Input value={newStaffForm.bank_branch_code} onChange={e => setNewStaffForm({ ...newStaffForm, bank_branch_code: e.target.value })} />
-              </div>
-            </div>
+            {renderFormFields(addForm)}
+
+            {/* Documents upload */}
             <div className="space-y-2">
               <Label>Documents</Label>
               <div
@@ -536,129 +539,12 @@ const StaffDirectory = () => {
 
       {/* Edit Staff Dialog */}
       <Dialog open={showEditStaffDialog} onOpenChange={setShowEditStaffDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Staff Member</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdateStaff} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>First Name</Label>
-                <Input
-                  value={editStaffForm.first_name}
-                  onChange={e => setEditStaffForm({ ...editStaffForm, first_name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Last Name</Label>
-                <Input
-                  value={editStaffForm.last_name}
-                  onChange={e => setEditStaffForm({ ...editStaffForm, last_name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Clock Number</Label>
-                <Input
-                  value={editStaffForm.clock_number}
-                  onChange={e => setEditStaffForm({ ...editStaffForm, clock_number: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={editStaffForm.email}
-                  onChange={e => setEditStaffForm({ ...editStaffForm, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Phone Number</Label>
-                <Input
-                  value={editStaffForm.phone_number}
-                  onChange={e => setEditStaffForm({ ...editStaffForm, phone_number: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Hourly Rate</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={editStaffForm.hourly_rate}
-                  onChange={e => setEditStaffForm({ ...editStaffForm, hourly_rate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Employee Type</Label>
-                <Select
-                  value={editStaffForm.employee_type}
-                  onValueChange={value => setEditStaffForm({ ...editStaffForm, employee_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EMPLOYEE_TYPE_CHOICES.map(choice => (
-                      <SelectItem key={choice.value} value={choice.value}>
-                        {choice.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Factory</Label>
-                <Select value={editStaffForm.factory} onValueChange={value => setEditStaffForm({ ...editStaffForm, factory: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FACTORY_CHOICES.map(choice => (
-                      <SelectItem key={choice.value} value={choice.value}>
-                        {choice.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Department</Label>
-                <Select value={editStaffForm.department} onValueChange={value => setEditStaffForm({ ...editStaffForm, department: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEPARTMENT_CHOICES.map(choice => (
-                      <SelectItem key={choice.value} value={choice.value}>
-                        {choice.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Position</Label>
-                <Input value={editStaffForm.position} onChange={e => setEditStaffForm({ ...editStaffForm, position: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Address</Label>
-                <Input value={editStaffForm.address} onChange={e => setEditStaffForm({ ...editStaffForm, address: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Cap Hour</Label>
-                <Input value={editStaffForm.cap_hour} onChange={e => setEditStaffForm({ ...editStaffForm, cap_hour: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Bank Account Number</Label>
-                <Input value={editStaffForm.bank_account_number} onChange={e => setEditStaffForm({ ...editStaffForm, bank_account_number: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Bank Branch Code</Label>
-                <Input value={editStaffForm.bank_branch_code} onChange={e => setEditStaffForm({ ...editStaffForm, bank_branch_code: e.target.value })} />
-              </div>
-            </div>
+            {renderFormFields(editForm)}
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowEditStaffDialog(false)}>
                 Cancel
@@ -672,45 +558,29 @@ const StaffDirectory = () => {
       </Dialog>
 
       {/* Filters */}
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input placeholder="Search staff..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
         </div>
-
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger>
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All types</SelectItem>
-            {EMPLOYEE_TYPE_CHOICES.map(choice => (
-              <SelectItem key={choice.value} value={choice.value}>
-                {choice.label}
-              </SelectItem>
+            {EMPLOYEE_TYPE_CHOICES.map(c => (
+              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
       <div className="space-y-4">
-        {/* Floating header with no container - matching Clients page */}
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold">Staff Management</h3>
-          {/* <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-50">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
-            <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-50">
-              <Search className="h-4 w-4 mr-2" />
-              Search
-            </Button>
-          </div> */}
         </div>
 
-        {/* Table with grey header - matching Clients page exactly */}
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -721,12 +591,11 @@ const StaffDirectory = () => {
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Department</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Hourly Rate</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Type</th>
-                  {/* <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Status</th> */}
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white">
-                {filteredStaff.map(employee => (
+                {filteredStaff.map((employee: any) => (
                   <tr
                     key={employee.id}
                     className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
@@ -746,16 +615,6 @@ const StaffDirectory = () => {
                         {employee.employee_type}
                       </Badge>
                     </td>
-                    {/* <td className="py-2 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${
-                          employee.is_active ? 'bg-green-500' : 'bg-gray-400'
-                        }`}></div>
-                        <span className="text-xs">
-                          {employee.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                    </td> */}
                     <td className="py-2 px-4" onClick={e => e.stopPropagation()}>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" className="text-xs" onClick={e => handleEditStaff(employee, e)}>
@@ -774,48 +633,7 @@ const StaffDirectory = () => {
         </div>
       </div>
 
-      {/* Pagination */}
-      {/* {totalPages > 1 && (
-            <div className="flex items-center justify-center mt-6">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious 
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                    />
-                  </PaginationItem>
-                  
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <PaginationItem key={page}>
-                      <PaginationLink
-                        onClick={() => setCurrentPage(page)}
-                        isActive={currentPage === page}
-                        className="cursor-pointer"
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-                  
-                  <PaginationItem>
-                    <PaginationNext 
-                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )} */}
-
-      {/* <div className="flex items-center justify-between mt-4">
-            <p className="text-xs text-gray-600">
-              Showing {startIdx + 1} to {Math.min(startIdx + itemsPerPage, filteredStaff.length)} of {filteredStaff.length} staff members
-            </p>
-          </div> */}
-
-      {/* Enhanced Employee Details Modal - Orders Style */}
+      {/* Employee Details Modal */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           {selectedEmployee && (
@@ -824,16 +642,16 @@ const StaffDirectory = () => {
                 <div className="flex items-center space-x-4">
                   <div>
                     <h1 className="text-2xl font-bold text-gray-900">
-                      {selectedEmployee.first_name} {selectedEmployee.last_name}
+                      {(selectedEmployee as any).first_name} {(selectedEmployee as any).last_name}
                     </h1>
                     <p className="text-gray-600">
-                      {selectedEmployee.employee_number} • {selectedEmployee.department || 'Unassigned'}
+                      {(selectedEmployee as any).employee_number} • {(selectedEmployee as any).department || 'Unassigned'}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Badge variant={selectedEmployee.is_active ? 'default' : 'secondary'}>
-                    {selectedEmployee.is_active ? 'Active' : 'Inactive'}
+                  <Badge variant={(selectedEmployee as any).is_active ? 'default' : 'secondary'}>
+                    {(selectedEmployee as any).is_active ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>
               </div>
@@ -854,7 +672,7 @@ const StaffDirectory = () => {
                         <CardTitle className="text-sm font-medium text-gray-700">Employee Number</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-lg font-semibold text-gray-900">{selectedEmployee.employee_number}</p>
+                        <p className="text-lg font-semibold text-gray-900">{(selectedEmployee as any).employee_number}</p>
                       </CardContent>
                     </Card>
                     <Card>
@@ -862,7 +680,7 @@ const StaffDirectory = () => {
                         <CardTitle className="text-sm font-medium text-gray-700">Department</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-lg font-semibold text-gray-900">{selectedEmployee.department || 'Unassigned'}</p>
+                        <p className="text-lg font-semibold text-gray-900">{(selectedEmployee as any).department || 'Unassigned'}</p>
                       </CardContent>
                     </Card>
                     <Card>
@@ -870,7 +688,7 @@ const StaffDirectory = () => {
                         <CardTitle className="text-sm font-medium text-gray-700">Hourly Rate</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-lg font-semibold text-gray-900">{formatCurrency(selectedEmployee.hourly_rate)}/hr</p>
+                        <p className="text-lg font-semibold text-gray-900">{formatCurrency((selectedEmployee as any).hourly_rate)}/hr</p>
                       </CardContent>
                     </Card>
                     <Card>
@@ -878,7 +696,7 @@ const StaffDirectory = () => {
                         <CardTitle className="text-sm font-medium text-gray-700">Start Date</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-lg font-semibold text-gray-900">{formatDate(selectedEmployee.hire_date)}</p>
+                        <p className="text-lg font-semibold text-gray-900">{formatDate((selectedEmployee as any).hire_date)}</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -891,27 +709,19 @@ const StaffDirectory = () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <p className="text-sm font-medium text-gray-700">Employee Type</p>
-                          <p className="text-gray-900">{selectedEmployee.employee_type}</p>
+                          <p className="text-gray-900">{(selectedEmployee as any).employee_type}</p>
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-700">Factory Location</p>
-                          <p className="text-gray-900">{selectedEmployee.factory}</p>
+                          <p className="text-gray-900">{(selectedEmployee as any).factory}</p>
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-700">Position</p>
-                          <p className="text-gray-900">{selectedEmployee.position || 'Not specified'}</p>
+                          <p className="text-gray-900">{(selectedEmployee as any).position || 'Not specified'}</p>
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-700">Clock Number</p>
-                          <p className="text-gray-900">{selectedEmployee.atg_clock_number || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Union Member</p>
-                          <Badge variant="outline">{selectedEmployee.union_member ? 'Yes' : 'No'}</Badge>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Bonus Eligible</p>
-                          <Badge variant="outline">{selectedEmployee.bonus_eligible ? 'Yes' : 'No'}</Badge>
+                          <p className="text-gray-900">{(selectedEmployee as any).clock_number || 'N/A'}</p>
                         </div>
                       </div>
                     </CardContent>
@@ -930,19 +740,15 @@ const StaffDirectory = () => {
                       <CardContent className="space-y-4">
                         <div>
                           <Label>Email Address</Label>
-                          <p className="text-gray-900">{selectedEmployee.email || 'No email on file'}</p>
+                          <p className="text-gray-900">{(selectedEmployee as any).email || 'No email on file'}</p>
                         </div>
                         <div>
                           <Label>Phone Number</Label>
-                          <p className="text-gray-900">{selectedEmployee.phone || 'No phone on file'}</p>
-                        </div>
-                        <div>
-                          <Label>Emergency Contact</Label>
-                          <p className="text-gray-900">{selectedEmployee.emergency_contact || 'Not provided'}</p>
+                          <p className="text-gray-900">{(selectedEmployee as any).phone_number || 'No phone on file'}</p>
                         </div>
                         <div>
                           <Label>Address</Label>
-                          <p className="text-gray-900">{selectedEmployee.address || 'Not provided'}</p>
+                          <p className="text-gray-900">{(selectedEmployee as any).address || 'Not provided'}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -956,20 +762,12 @@ const StaffDirectory = () => {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div>
-                          <Label>Bank Name</Label>
-                          <p className="text-gray-900">{selectedEmployee.bank_name || 'Not provided'}</p>
-                        </div>
-                        <div>
                           <Label>Account Number</Label>
-                          <p className="text-gray-900">{selectedEmployee.bank_account_number || 'Not provided'}</p>
+                          <p className="text-gray-900">{(selectedEmployee as any).bank_account_number || 'Not provided'}</p>
                         </div>
                         <div>
-                          <Label>Payment Method</Label>
-                          <p className="text-gray-900">{selectedEmployee.payment_method || 'Bank Transfer'}</p>
-                        </div>
-                        <div>
-                          <Label>Tax Number</Label>
-                          <p className="text-gray-900">{selectedEmployee.tax_number || 'Not provided'}</p>
+                          <Label>Branch Code</Label>
+                          <p className="text-gray-900">{(selectedEmployee as any).bank_branch_code || 'Not provided'}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -995,7 +793,7 @@ const StaffDirectory = () => {
                         </TableHeader>
                         <TableBody>
                           {timeRecords.length > 0 ? (
-                            timeRecords.map(record => (
+                            (timeRecords as any[]).map((record: any) => (
                               <TableRow key={record.id}>
                                 <TableCell>{formatDate(record.date)}</TableCell>
                                 <TableCell>{record.clock_in || 'N/A'}</TableCell>
@@ -1029,7 +827,6 @@ const StaffDirectory = () => {
                           <TableRow>
                             <TableHead>Period</TableHead>
                             <TableHead>Regular Hours</TableHead>
-                            <TableHead>Overtime Hours</TableHead>
                             <TableHead>Gross Pay</TableHead>
                             <TableHead>Deductions</TableHead>
                             <TableHead>Net Pay</TableHead>
@@ -1038,11 +835,10 @@ const StaffDirectory = () => {
                         </TableHeader>
                         <TableBody>
                           {payrollHistory.length > 0 ? (
-                            payrollHistory.map(record => (
+                            (payrollHistory as any[]).map((record: any) => (
                               <TableRow key={record.id}>
                                 <TableCell>{record.payroll_periods?.period_name || 'N/A'}</TableCell>
                                 <TableCell>{record.regular_hours || '0'}</TableCell>
-                                <TableCell>{record.overtime_hours || '0'}</TableCell>
                                 <TableCell>{formatCurrency(record.gross_pay)}</TableCell>
                                 <TableCell>{formatCurrency(record.total_deductions)}</TableCell>
                                 <TableCell className="font-semibold">{formatCurrency(record.net_pay)}</TableCell>
@@ -1055,7 +851,7 @@ const StaffDirectory = () => {
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={7} className="text-center text-muted-foreground">
+                              <TableCell colSpan={6} className="text-center text-muted-foreground">
                                 No payroll records found
                               </TableCell>
                             </TableRow>
@@ -1080,7 +876,7 @@ const StaffDirectory = () => {
                     <CardContent>
                       <div className="space-y-4">
                         {loanDetails.length > 0 ? (
-                          loanDetails.map(loan => (
+                          (loanDetails as any[]).map((loan: any) => (
                             <div key={loan.id} className="p-4 rounded-lg border-l-4 border-l-blue-500 bg-blue-50">
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div>
@@ -1108,11 +904,6 @@ const StaffDirectory = () => {
                                   <Badge variant={loan.status === 'active' ? 'destructive' : 'default'}>{loan.status}</Badge>
                                 </div>
                               </div>
-                              {loan.notes && (
-                                <div className="mt-2 pt-2 border-t">
-                                  <p className="text-sm text-gray-700">{loan.notes}</p>
-                                </div>
-                              )}
                             </div>
                           ))
                         ) : (
@@ -1151,7 +942,6 @@ const StaffDirectory = () => {
                 </SelectContent>
               </Select>
             </div>
-
             <div>
               <Label htmlFor="original_amount">Loan Amount (R)</Label>
               <Input
@@ -1163,7 +953,6 @@ const StaffDirectory = () => {
                 onChange={e => setLoanForm({ ...loanForm, original_amount: e.target.value })}
               />
             </div>
-
             <div>
               <Label htmlFor="monthly_payment">Monthly Payment (R)</Label>
               <Input
@@ -1175,7 +964,6 @@ const StaffDirectory = () => {
                 onChange={e => setLoanForm({ ...loanForm, monthly_payment: e.target.value })}
               />
             </div>
-
             <div>
               <Label htmlFor="start_date">Start Date</Label>
               <Input
@@ -1185,7 +973,6 @@ const StaffDirectory = () => {
                 onChange={e => setLoanForm({ ...loanForm, start_date: e.target.value })}
               />
             </div>
-
             <div>
               <Label htmlFor="notes">Notes (Optional)</Label>
               <Textarea
@@ -1195,7 +982,6 @@ const StaffDirectory = () => {
                 onChange={e => setLoanForm({ ...loanForm, notes: e.target.value })}
               />
             </div>
-
             <div className="flex gap-2 pt-4">
               <Button variant="outline" onClick={() => setShowLoanDialog(false)} className="flex-1">
                 Cancel

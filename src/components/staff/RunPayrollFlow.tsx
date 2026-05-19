@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { postData, downloadFile } from '@/lib/Api';
+import { useToast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ interface RunPayrollFlowProps {
 }
 
 const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   /* const [selectedEmployees, setSelectedEmployees] = useState<any[]>([]); */
   const [selectedEmployees, setSelectedEmployees] = useState<any[]>([]);
@@ -596,7 +598,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
                 <TableHead>Rate p/hr</TableHead>
                 <TableHead>Bonus</TableHead>
                 <TableHead>Total worked hours</TableHead>
-                <TableHead>Total off weekend hours</TableHead>
+                <TableHead>Weekend Hours (deducted)</TableHead>
                 <TableHead>Total paid hours</TableHead>
                 <TableHead>Other Deductions</TableHead>
                 <TableHead>Loans</TableHead>
@@ -795,12 +797,33 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
   const processPayrollMutation = useMutation({
     mutationFn: (data: any) => postData({ url: 'atg/attendance/save-payroll-run/', data }),
     onSuccess: data => {
-      // onComplete();
-      // console.log(data);
       setPayrollId(data.batch_id);
+
+      const sync = data.simplepay_sync;
+      if (!sync || sync.status === 'not_run') {
+        toast({ title: 'Payroll saved', description: 'SimplePay sync was not configured.' });
+      } else if (sync.status === 'error') {
+        toast({
+          title: 'Payroll saved — SimplePay sync failed',
+          description: sync.error || 'Unknown error',
+          variant: 'destructive',
+        });
+      } else if (sync.errors && sync.errors.length > 0) {
+        toast({
+          title: `Payroll saved — ${sync.synced} synced to SimplePay`,
+          description: sync.errors.slice(0, 3).join(' | '),
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Payroll saved & synced',
+          description: `${sync.synced} employee${sync.synced !== 1 ? 's' : ''} sent to SimplePay.`,
+        });
+      }
     },
     onError: error => {
       console.error('Error processing payroll:', error);
+      toast({ title: 'Error saving payroll', description: 'Please try again.', variant: 'destructive' });
     },
   });
 
