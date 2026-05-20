@@ -363,6 +363,19 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     }
   };
 
+  const handleDownloadCellCSV = async (payroll: any) => {
+    try {
+      await downloadFile(
+        `staff/payroll-batches/${payroll.id}/export-cell-csv/`,
+        `Cell_Payments_${payroll.start_date}_to_${payroll.end_date}.csv`,
+      );
+      toast({ title: 'Success', description: 'Cell phone CSV downloaded' });
+    } catch (error) {
+      console.error('Error downloading cell CSV:', error);
+      toast({ title: 'Error', description: 'Failed to download cell CSV', variant: 'destructive' });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case 'draft':
@@ -513,7 +526,8 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Employees</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Total Cost</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Run Date</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Download</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Bank CSV</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Cell CSV</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">View</th>
                 </tr>
               </thead>
@@ -565,21 +579,23 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                       {payroll.status === 'completed' ? new Date(payroll.pay_date).toLocaleDateString() : '-'}
                     </td>
                     <td className="py-2 px-4">
-                      <div className="flex gap-1">
-                        {/* <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                          <Eye className="h-3 w-3" />
-                        </Button> */}
-                        {payroll.status === 'completed' && (
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleDownloadPDF(payroll)}>
-                            <Download className="h-3 w-3" />
-                          </Button>
-                        )}
-                        {payroll.status === 'draft' && (
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onRunPayroll}>
-                            <Play className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
+                      {payroll.status === 'completed' && (
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Bank CSV" onClick={() => handleDownloadPDF(payroll)}>
+                          <Download className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {payroll.status === 'draft' && (
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onRunPayroll}>
+                          <Play className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </td>
+                    <td className="py-2 px-4">
+                      {payroll.status === 'completed' && (
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-orange-500" title="Cell Phone CSV" onClick={() => handleDownloadCellCSV(payroll)}>
+                          <Download className="h-3 w-3" />
+                        </Button>
+                      )}
                     </td>
                     <td className="py-2 px-4">
                       <button onClick={() => navigate(`/staff/payroll-batches/${payroll.id}/slips`)}>
