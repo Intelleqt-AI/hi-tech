@@ -87,7 +87,7 @@ const staffSchema = z.object({
 
   // Optional — CharField blank=True null=True
   clock_number:        z.string().min(1, 'Required').max(50, 'Max 50 characters'),
-  phone_number:        z.string().min(1, 'Required').max(20, 'Max 20 characters'),
+  phone_number:        z.string().max(20, 'Max 20 characters').optional().or(z.literal('')),
   address:             z.string().optional().or(z.literal('')),
   bank_account_number: z.string().max(50, 'Max 50 characters').optional().or(z.literal('')),
   bank_branch_code:    z.string().max(20, 'Max 20 characters').optional().or(z.literal('')),
@@ -357,9 +357,9 @@ const StaffDirectory = () => {
           <FieldError message={errors.clock_number?.message} />
         </div>
 
-        {/* Phone Number — required CharField max 20 */}
+        {/* Phone Number — optional CharField max 20 */}
         <div className="space-y-2">
-          <Label>Phone Number <span className="text-destructive">*</span></Label>
+          <Label>Phone Number</Label>
           <Input {...register('phone_number')} />
           <FieldError message={errors.phone_number?.message} />
         </div>

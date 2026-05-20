@@ -224,6 +224,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
           department: emp.department,
           hourly_rate: emp.hourly_rate,
           capped_hours: emp.cap_hour,
+          phone_number: emp.phone_number || '',
           total_worked_hours: emp.total_hours,
           total_weekend_hours: emp.weekend_hours,
           total_paid_hours: emp.paid_hours,
@@ -785,6 +786,15 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
               <Download className="h-4 w-4 mr-2" />
               Download Report
             </Button>
+            <Button
+              variant="outline"
+              onClick={handleDownloadCellPhoneCSV}
+              disabled={!payrollId}
+              className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200 disabled:hover:bg-gray-200 disabled:hover:text-gray-500 disabled:hover:border-gray-200 disabled:hover:cursor-not-allowed"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Cell Phone CSV
+            </Button>
             {/* {payrollId && (
               <Button onClick={onComplete} className="bg-blue-600 hover:bg-blue-700">
                 Finish
@@ -805,6 +815,18 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
       );
     } catch (error) {
       console.error('Error downloading report:', error);
+    }
+  };
+
+  const handleDownloadCellPhoneCSV = async () => {
+    if (!payrollId) return;
+    try {
+      await downloadFile(
+        `staff/payroll-batches/${payrollId}/export-cell-csv/`,
+        `Cell_Payments_${payPeriod.start_date}_to_${payPeriod.end_date}.csv`,
+      );
+    } catch (error) {
+      console.error('Error downloading cell phone CSV:', error);
     }
   };
 

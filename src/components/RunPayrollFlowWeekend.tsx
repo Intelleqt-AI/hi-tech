@@ -734,6 +734,15 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
               <Download className="h-4 w-4 mr-2" />
               Download Report
             </Button>
+            <Button
+              variant="outline"
+              onClick={handleDownloadCellPhoneCSV}
+              disabled={!payrollId}
+              className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200 disabled:hover:bg-gray-200 disabled:hover:text-gray-500 disabled:hover:border-gray-200 disabled:hover:cursor-not-allowed"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Cell Phone CSV
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -748,6 +757,18 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
       );
     } catch (error) {
       console.error('Error downloading report:', error);
+    }
+  };
+
+  const handleDownloadCellPhoneCSV = async () => {
+    if (!payrollId) return;
+    try {
+      await downloadFile(
+        `staff/payroll-batches/${payrollId}/export-cell-csv/`,
+        `Cell_Payments_${payPeriod.start_date}_to_${payPeriod.end_date}.csv`,
+      );
+    } catch (error) {
+      console.error('Error downloading cell phone CSV:', error);
     }
   };
 
