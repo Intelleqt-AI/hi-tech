@@ -346,7 +346,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     try {
       await downloadFile(
         `staff/payroll-batches/${payroll.id}/export-csv/`,
-        `Payroll_Report_${payroll.start_date}_to_${payroll.end_date}.csv`,
+        `Payroll_Report_${payroll.start_date}_to_${payroll.end_date}.xlsx`,
       );
 
       toast({
@@ -367,7 +367,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     try {
       await downloadFile(
         `staff/payroll-batches/${payroll.id}/export-cell-csv/`,
-        `Cell_Payments_${payroll.start_date}_to_${payroll.end_date}.csv`,
+        `Cell_Payments_${payroll.start_date}_to_${payroll.end_date}.xlsx`,
       );
       toast({ title: 'Success', description: 'Cell phone CSV downloaded' });
     } catch (error) {

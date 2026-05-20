@@ -811,7 +811,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
     try {
       await downloadFile(
         `staff/payroll-batches/${payrollId}/export-csv/`,
-        `Payroll_Report_${payPeriod.start_date}_to_${payPeriod.end_date}.csv`,
+        `Payroll_Report_${payPeriod.start_date}_to_${payPeriod.end_date}.xlsx`,
       );
     } catch (error) {
       console.error('Error downloading report:', error);
@@ -823,7 +823,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
     try {
       await downloadFile(
         `staff/payroll-batches/${payrollId}/export-cell-csv/`,
-        `Cell_Payments_${payPeriod.start_date}_to_${payPeriod.end_date}.csv`,
+        `Cell_Payments_${payPeriod.start_date}_to_${payPeriod.end_date}.xlsx`,
       );
     } catch (error) {
       console.error('Error downloading cell phone CSV:', error);
