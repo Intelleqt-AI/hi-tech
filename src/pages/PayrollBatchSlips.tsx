@@ -84,9 +84,7 @@ const PayrollBatchSlips = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingReport, setIsDownloadingReport] = useState(false);
 
-  const { data, isLoading } = useFetch(
-    `staff/payroll-batches/${id}/slips/?page=${currentPage}&page_size=${PAGE_SIZE}`
-  );
+  const { data, isLoading } = useFetch(`staff/payroll-batches/${id}/slips/?page=${currentPage}&page_size=${PAGE_SIZE}`);
 
   const slips = data?.results ?? [];
   const totalCount = data?.count ?? 0;
@@ -98,9 +96,7 @@ const PayrollBatchSlips = () => {
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const allData = await fetchData(
-        `staff/payroll-batches/${id}/slips/?page=1&page_size=${totalCount || 9999}`
-      );
+      const allData = await fetchData(`staff/payroll-batches/${id}/slips/?page=1&page_size=${totalCount || 9999}`);
       const rows = ((allData?.results ?? []) as Slip[]).map(slipToRow);
       const csv = toCSV(rows);
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -116,7 +112,7 @@ const PayrollBatchSlips = () => {
   };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-0 space-y-4 h-screen flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -130,12 +126,7 @@ const PayrollBatchSlips = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownload}
-            disabled={isDownloading || isLoading || totalCount === 0}
-          >
+          <Button variant="outline" size="sm" onClick={handleDownload} disabled={isDownloading || isLoading || totalCount === 0}>
             <Download className="h-4 w-4 mr-2" />
             {isDownloading ? 'Downloading...' : 'Download CSV'}
           </Button>
@@ -145,10 +136,7 @@ const PayrollBatchSlips = () => {
             onClick={async () => {
               setIsDownloadingReport(true);
               try {
-                await downloadFile(
-                  `staff/payroll-batches/${id}/export-report/`,
-                  `payroll_report_batch_${id}.xlsx`,
-                );
+                await downloadFile(`staff/payroll-batches/${id}/export-report/`, `payroll_report_batch_${id}.xlsx`);
               } finally {
                 setIsDownloadingReport(false);
               }
@@ -162,8 +150,8 @@ const PayrollBatchSlips = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
+        <div className="overflow-auto flex-1">
           <table className="w-full">
             <thead className="bg-accent">
               <tr>
@@ -224,9 +212,7 @@ const PayrollBatchSlips = () => {
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-          <p className="text-xs text-gray-600">
-            {isLoading ? '...' : `Page ${currentPage} of ${totalPages} — ${totalCount} slips total`}
-          </p>
+          <p className="text-xs text-gray-600">{isLoading ? '...' : `Page ${currentPage} of ${totalPages} — ${totalCount} slips total`}</p>
 
           {totalPages > 1 && (
             <Pagination>
@@ -247,11 +233,7 @@ const PayrollBatchSlips = () => {
 
                   return (
                     <PaginationItem key={pageNum}>
-                      <PaginationLink
-                        onClick={() => setCurrentPage(pageNum)}
-                        isActive={currentPage === pageNum}
-                        className="cursor-pointer"
-                      >
+                      <PaginationLink onClick={() => setCurrentPage(pageNum)} isActive={currentPage === pageNum} className="cursor-pointer">
                         {pageNum}
                       </PaginationLink>
                     </PaginationItem>
