@@ -788,6 +788,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
       start_date: payPeriod.start_date,
       end_date: payPeriod.end_date,
       type: 'weekend',
+      factory: selectedCompany,
       records: payRollInfo.map(
         (calc: {
           id: number;

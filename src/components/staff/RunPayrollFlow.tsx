@@ -868,6 +868,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
       start_date: payPeriod.start_date,
       end_date: payPeriod.end_date,
       type: 'general',
+      factory: selectedCompany,
       records: payRollInfo.map(
         (calc: {
           id: number;

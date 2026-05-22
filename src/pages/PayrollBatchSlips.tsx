@@ -13,7 +13,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import useFetch from '@/hooks/useFetch';
-import { fetchData } from '@/lib/Api';
+import { fetchData, downloadFile } from '@/lib/Api';
 
 const PAGE_SIZE = 20;
 
@@ -82,6 +82,7 @@ const PayrollBatchSlips = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
 
   const { data, isLoading } = useFetch(
     `staff/payroll-batches/${id}/slips/?page=${currentPage}&page_size=${PAGE_SIZE}`
@@ -128,15 +129,36 @@ const PayrollBatchSlips = () => {
             <p className="text-sm text-muted-foreground">Batch #{id}</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDownload}
-          disabled={isDownloading || isLoading || totalCount === 0}
-        >
-          <Download className="h-4 w-4 mr-2" />
-          {isDownloading ? 'Downloading...' : 'Download CSV'}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownload}
+            disabled={isDownloading || isLoading || totalCount === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {isDownloading ? 'Downloading...' : 'Download CSV'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              setIsDownloadingReport(true);
+              try {
+                await downloadFile(
+                  `staff/payroll-batches/${id}/export-report/`,
+                  `payroll_report_batch_${id}.xlsx`,
+                );
+              } finally {
+                setIsDownloadingReport(false);
+              }
+            }}
+            disabled={isDownloadingReport || isLoading || totalCount === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {isDownloadingReport ? 'Downloading...' : 'Download Report'}
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
