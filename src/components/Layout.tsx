@@ -25,9 +25,13 @@ const Layout = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
-        <AppSidebar />
+        <div className="print:hidden print-hidden">
+          <AppSidebar />
+        </div>
         <div className="flex-1 flex flex-col">
-          <TopBar currentPage={getPageTitle()} />
+          <div className="print:hidden print-hidden">
+            <TopBar currentPage={getPageTitle()} />
+          </div>
           <main className="flex-1 bg-white overflow-auto">
             <div className="p-4">
               <Outlet />

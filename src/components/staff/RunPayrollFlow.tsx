@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, Users, Clock, Calendar, DollarSign, CheckCircle, Download, Mail } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Users, Clock, Calendar, DollarSign, CheckCircle, Download, Mail, Printer } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchEntries, fetchHours } from '@/lib/Api';
 import * as XLSX from 'xlsx';
@@ -772,7 +772,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
             </div> */}
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-2 print:hidden print-hidden">
             <Button onClick={handleProcessPayroll} className="bg-green-600 hover:bg-green-700" disabled={!!payrollId}>
               <CheckCircle className="h-4 w-4 mr-2" />
               {payrollId ? 'Payroll Processed' : 'Process Payroll'}
@@ -794,6 +794,10 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
             >
               <Download className="h-4 w-4 mr-2" />
               Cell Phone CSV
+            </Button>
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer className="h-4 w-4 mr-2" />
+              Print
             </Button>
             {/* {payrollId && (
               <Button onClick={onComplete} className="bg-blue-600 hover:bg-blue-700">
@@ -927,12 +931,12 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={onBack}>
+          <Button variant="outline" size="sm" onClick={onBack} className="print:hidden print-hidden">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
           <div>
-            <h1 className="text-xl font-bold">Run Payroll</h1>
+            <h1 className="text-xl font-bold">Run Payroll (General)</h1>
             <p className="text-sm text-muted-foreground">
               {payPeriod.start_date} to {payPeriod.end_date}
             </p>
@@ -989,7 +993,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
       {renderCurrentStep()}
 
       {/* Navigation */}
-      <div className="flex justify-between">
+      <div className="flex justify-between print:hidden print-hidden">
         <Button variant="outline" size="sm" onClick={() => setCurrentStep(Math.max(1, currentStep - 1))} disabled={currentStep === 1}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Previous

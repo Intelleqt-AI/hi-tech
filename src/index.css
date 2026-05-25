@@ -284,3 +284,20 @@
     @apply bg-hitec-primary/10 text-hitec-primary;
   }
 }
+
+@media print {
+  aside,
+  header,
+  [data-sidebar],
+  [data-sidebar-wrapper] {
+    display: none !important;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  body, html {
+    background: white !important;
+  }
+}
