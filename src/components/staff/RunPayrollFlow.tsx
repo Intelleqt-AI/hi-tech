@@ -212,8 +212,8 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
         // Calculate gross and net based on these editable fields and API base values
         // Gross = API_gross_salary + bonus_pay
         const gross_pay = (emp.gross_salary || 0) + bonus_pay;
-        // Net = Gross - loan_deductions - other_deductions
-        const net_pay = gross_pay - loan_deductions - other_deductions;
+        // Net = Gross - other_deductions (loans shown but not deducted)
+        const net_pay = gross_pay - other_deductions;
 
         return {
           id: emp.id,
@@ -488,8 +488,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
           const newBonus = bonusAmount;
           // Gross = base_gross_salary_from_api + newBonus
           const newGross = calc.base_gross_salary_from_api + newBonus;
-          // Net = newGross - loan_deductions - other_deductions
-          const newNet = newGross - (calc.loan_deductions || 0) - (calc.other_deductions || 0);
+          const newNet = newGross - (calc.other_deductions || 0);
 
           return {
             ...calc,
@@ -511,13 +510,12 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
           const newLoanDeductions = loanAmount;
           // Gross remains the same (base_gross_salary_from_api + bonus_pay)
           const currentGross = calc.base_gross_salary_from_api + (calc.bonus_pay || 0);
-          // Net = currentGross - newLoanDeductions - other_deductions
-          const newNet = currentGross - newLoanDeductions - (calc.other_deductions || 0);
+          const newNet = currentGross - (calc.other_deductions || 0);
 
           return {
             ...calc,
             loan_deductions: newLoanDeductions,
-            gross_pay: currentGross, // Ensure gross is consistent
+            gross_pay: currentGross,
             net_pay: newNet,
           };
         }
@@ -533,8 +531,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
           const newOtherDeductions = otherDeductionsAmount;
           // Gross remains the same (base_gross_salary_from_api + bonus_pay)
           const currentGross = calc.base_gross_salary_from_api + (calc.bonus_pay || 0);
-          // Net = currentGross - loan_deductions - newOtherDeductions
-          const newNet = currentGross - (calc.loan_deductions || 0) - newOtherDeductions;
+          const newNet = currentGross - newOtherDeductions;
 
           return {
             ...calc,

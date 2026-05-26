@@ -177,7 +177,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
         // Gross = API_gross_salary + bonus_pay
         const gross_pay = (emp.gross_salary || 0) + bonus_pay;
         // Net = Gross - loan_deductions - other_deductions
-        const net_pay = gross_pay - loan_deductions - other_deductions;
+        const net_pay = gross_pay - other_deductions;
 
         return {
           id: emp.id,
@@ -452,7 +452,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
           // Gross = base_gross_salary_from_api + newBonus
           const newGross = calc.base_gross_salary_from_api + newBonus;
           // Net = newGross - loan_deductions - other_deductions
-          const newNet = newGross - (calc.loan_deductions || 0) - (calc.other_deductions || 0);
+          const newNet = newGross - (calc.other_deductions || 0);
 
           return {
             ...calc,
@@ -497,7 +497,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete }: any) => {
           // Gross remains the same (base_gross_salary_from_api + bonus_pay)
           const currentGross = calc.base_gross_salary_from_api + (calc.bonus_pay || 0);
           // Net = currentGross - loan_deductions - newOtherDeductions
-          const newNet = currentGross - (calc.loan_deductions || 0) - newOtherDeductions;
+          const newNet = currentGross - newOtherDeductions;
 
           return {
             ...calc,
