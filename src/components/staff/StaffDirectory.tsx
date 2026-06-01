@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Mail, DollarSign, Paperclip, X, FileText } from 'lucide-react';
+import { Plus, Search, Mail, DollarSign, Paperclip, X, FileText, TrendingUp } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -152,6 +152,9 @@ const StaffDirectory = () => {
   });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [staffDocuments, setStaffDocuments] = useState<File[]>([]);
+  const [showRateIncreaseDialog, setShowRateIncreaseDialog] = useState(false);
+  const [rateIncreaseForm, setRateIncreaseForm] = useState({ factory: 'hitec', employee_type: 'permanent', percent: '' });
+  const [isApplyingIncrease, setIsApplyingIncrease] = useState(false);
 
   // ── React Hook Form instances ──────────────────────────────────────────────
 
@@ -292,6 +295,29 @@ const StaffDirectory = () => {
 
   const removeStaffDocument = (index: number) => {
     setStaffDocuments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const { mutate: applyRateIncrease } = usePost({
+    onSuccess: (data: any) => {
+      toast({ title: 'Rate increase applied', description: `${data.updated} staff updated (+${data.percent}%)` });
+      setShowRateIncreaseDialog(false);
+      setRateIncreaseForm({ factory: 'hitec', employee_type: 'permanent', percent: '' });
+      setIsApplyingIncrease(false);
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error?.message || 'Failed to apply rate increase', variant: 'destructive' });
+      setIsApplyingIncrease(false);
+    },
+  });
+
+  const handleRateIncrease = () => {
+    if (!rateIncreaseForm.percent || parseFloat(rateIncreaseForm.percent) <= 0) {
+      toast({ title: 'Invalid percent', description: 'Enter a positive percentage', variant: 'destructive' });
+      return;
+    }
+    setIsApplyingIncrease(true);
+    applyRateIncrease({ url: 'staff/members/bulk-rate-increase/', data: { ...rateIncreaseForm, percent: parseFloat(rateIncreaseForm.percent) } });
   };
 
   const formatDate = (dateString: any) => {
@@ -470,6 +496,10 @@ const StaffDirectory = () => {
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Staff Directory</h3>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowRateIncreaseDialog(true)}>
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Rate Increase
+          </Button>
           <Button onClick={() => setShowAddStaffDialog(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add new staff
@@ -550,6 +580,60 @@ const StaffDirectory = () => {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rate Increase Dialog */}
+      <Dialog open={showRateIncreaseDialog} onOpenChange={setShowRateIncreaseDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-green-600" />
+              Bulk Rate Increase
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <Label>Company</Label>
+              <Select value={rateIncreaseForm.factory} onValueChange={v => setRateIncreaseForm(f => ({ ...f, factory: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FACTORY_CHOICES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Staff Type</Label>
+              <Select value={rateIncreaseForm.employee_type} onValueChange={v => setRateIncreaseForm(f => ({ ...f, employee_type: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EMPLOYEE_TYPE_CHOICES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Increase Percentage (%)</Label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="e.g. 5"
+                value={rateIncreaseForm.percent}
+                onChange={e => setRateIncreaseForm(f => ({ ...f, percent: e.target.value }))}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowRateIncreaseDialog(false)}>Cancel</Button>
+              <Button onClick={handleRateIncrease} disabled={isApplyingIncrease} className="bg-green-600 hover:bg-green-700">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                {isApplyingIncrease ? 'Applying...' : 'Apply Increase'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
