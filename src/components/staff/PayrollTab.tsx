@@ -4,14 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, Calendar, FileText, Play, Eye, Download, Filter } from 'lucide-react';
+import { DollarSign, Calendar, FileText, Play, Eye, Download, Filter, MessageSquare } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { generatePayrollPDF, PayrollSummaryData } from '@/utils/payrollPDF';
 import { fetchEntries, downloadFile } from '@/lib/Api';
 import { useQuery } from '@tanstack/react-query';
 import useFetch from '@/hooks/useFetch';
+import CommentsModal from '@/components/CommentsModal';
 
 interface PayrollTabProps {
   onRunPayroll: () => void;
@@ -73,7 +76,10 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
   const [loading, setLoading] = useState(true);
   const [currentPeriodCalculations, setCurrentPeriodCalculations] = useState<any>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canRunPayroll = user?.role !== 'viewer';
   const [payrollPeriods, setPayrollPeriods] = useState([]);
+  const [commentsModal, setCommentsModal] = useState<{ approvalId: number; batchLabel: string; batchStatus: string } | null>(null);
 
   const currentPeriod = calculatePayPeriods();
 
@@ -100,7 +106,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
         total_employees: p.total_staff,
         total_net_pay: p.total_net,
         total_gross_pay: p.total_gross,
-        status: p.status || 'completed',
+        status: p.status || 'pending',
         period_type: p.period_type || 'fortnightly',
         pay_date: p.pay_date || p.end_date,
       }));
@@ -376,16 +382,32 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     }
   };
 
+  const handleProcessBatch = (payroll: any) => {
+    navigate('/payroll/general', {
+      state: {
+        approvedBatch: {
+          id: payroll.id,
+          start_date: payroll.start_date,
+          end_date: payroll.end_date,
+          total_net: payroll.total_net_pay ?? payroll.total_net ?? 0,
+          total_employees: payroll.total_employees ?? 0,
+        },
+      },
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'draft':
-        return <Badge className="bg-orange-100 text-orange-800">Draft</Badge>;
+      case 'pending':
+        return <Badge className="bg-amber-100 text-amber-800">Pending</Badge>;
+      case 'approved':
+        return <Badge className="bg-blue-100 text-blue-800">Approved</Badge>;
+      case 'queried':
+        return <Badge className="bg-red-100 text-red-800">Queried</Badge>;
       case 'completed':
         return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
-      case 'processing':
-        return <Badge className="bg-blue-100 text-blue-800">Processing</Badge>;
-      case 'failed':
-        return <Badge className="bg-red-100 text-red-800">Failed</Badge>;
+      case 'draft':
+        return <Badge className="bg-orange-100 text-orange-800">Draft</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -399,9 +421,11 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
       return matchesStatus && matchesType && matchesRunType;
     })
     .sort((a, b) => {
-      // Draft periods first (newest draft first), then completed periods (newest completed first)
-      if (a.status === 'draft' && b.status !== 'draft') return -1;
-      if (b.status === 'draft' && a.status !== 'draft') return 1;
+      // Active periods first (newest active first), then completed periods (newest completed first)
+      const aActive = ['pending', 'approved', 'queried', 'draft'].includes(a.status);
+      const bActive = ['pending', 'approved', 'queried', 'draft'].includes(b.status);
+      if (aActive && !bActive) return -1;
+      if (bActive && !aActive) return 1;
 
       // Within same status, sort by end date descending (newest first)
       return new Date(b.end_date).getTime() - new Date(a.end_date).getTime();
@@ -420,10 +444,12 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                 <DollarSign className="h-5 w-5 text-orange-600" />
                 Current Payroll Period
               </div>
-              <Button onClick={onRunPayroll} className="bg-green-600 hover:bg-green-700">
-                <Play className="h-4 w-4 mr-2" />
-                Run Payroll
-              </Button>
+              {canRunPayroll && (
+                <Button onClick={onRunPayroll} className="bg-green-600 hover:bg-green-700">
+                  <Play className="h-4 w-4 mr-2" />
+                  Run Payroll
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -480,10 +506,12 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold">Payroll History</h3>
           <div className="flex gap-2">
-            <Button onClick={onRunPayroll} className="bg-green-600 hover:bg-green-700">
-              <Play className="h-4 w-4 mr-2" />
-              Run Payroll
-            </Button>
+            {canRunPayroll && (
+              <Button onClick={onRunPayroll} className="bg-green-600 hover:bg-green-700">
+                <Play className="h-4 w-4 mr-2" />
+                Run Payroll
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-50">
               <Filter className="h-4 w-4 mr-2" />
               Filter
@@ -495,6 +523,9 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="pending">Pending Approval</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="queried">Queried</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="processing">Processing</SelectItem>
               </SelectContent>
@@ -520,7 +551,6 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
             <table className="w-full">
               <thead className="bg-accent">
                 <tr>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Status</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Period</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Type</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Employees</th>
@@ -529,35 +559,13 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Bank CSV</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Cell CSV</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">View</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Status</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPayrolls?.map(payroll => (
                   <tr key={payroll.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="py-2 px-4">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            payroll.status === 'completed'
-                              ? 'bg-green-500'
-                              : payroll.status === 'draft'
-                                ? 'bg-orange-500'
-                                : payroll.status === 'processing'
-                                  ? 'bg-blue-500'
-                                  : 'bg-red-500'
-                          }`}
-                        ></div>
-                        <span className="text-xs font-medium text-foreground">
-                          {payroll.status === 'completed'
-                            ? 'Completed'
-                            : payroll.status === 'draft'
-                              ? 'Draft'
-                              : payroll.status === 'processing'
-                                ? 'Processing'
-                                : 'Failed'}
-                        </span>
-                      </div>
-                    </td>
                     <td className="py-2 px-4">
                       <span className="text-xs font-medium text-primary hover:text-primary/80 cursor-pointer">
                         <span>
@@ -578,29 +586,77 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                     <td className="py-2 px-4 text-xs">
                       {payroll.status === 'completed' ? new Date(payroll.pay_date).toLocaleDateString() : '-'}
                     </td>
+                    {/* Bank CSV */}
                     <td className="py-2 px-4">
-                      {payroll.status === 'completed' && (
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Bank CSV" onClick={() => handleDownloadPDF(payroll)}>
-                          <Download className="h-3 w-3" />
-                        </Button>
-                      )}
-                      {payroll.status === 'draft' && (
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onRunPayroll}>
-                          <Play className="h-3 w-3" />
-                        </Button>
-                      )}
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Bank CSV" onClick={() => handleDownloadPDF(payroll)}>
+                        <Download className="h-3 w-3" />
+                      </Button>
                     </td>
+                    {/* Cell CSV */}
                     <td className="py-2 px-4">
-                      {payroll.status === 'completed' && (
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-orange-500" title="Cell Phone CSV" onClick={() => handleDownloadCellCSV(payroll)}>
-                          <Download className="h-3 w-3" />
-                        </Button>
-                      )}
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-orange-500" title="Cell Phone CSV" onClick={() => handleDownloadCellCSV(payroll)}>
+                        <Download className="h-3 w-3" />
+                      </Button>
                     </td>
                     <td className="py-2 px-4">
                       <button onClick={() => navigate(`/staff/payroll-batches/${payroll.id}/slips`)}>
                         <Eye className="h-4 w-4 cursor-pointer hover:text-primary" />
                       </button>
+                    </td>
+                    <td className="py-2 px-4">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="cursor-default">{getStatusBadge(payroll.status)}</span>
+                          </TooltipTrigger>
+                          {payroll.status === 'approved' && payroll.approved_by && (
+                            <TooltipContent>
+                              Approved by {payroll.approved_by}
+                              {payroll.approved_at && ` on ${new Date(payroll.approved_at).toLocaleString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    </td>
+                    {/* Actions column */}
+                    <td className="py-2 px-4">
+                      <div className="flex items-center gap-1">
+                        {payroll.approval_id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground relative"
+                            title="View thread"
+                            onClick={() => setCommentsModal({
+                              approvalId: payroll.approval_id,
+                              batchLabel: `${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(payroll.start_date))} – ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(payroll.end_date))}`,
+                              batchStatus: payroll.status,
+                            })}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            {payroll.status !== 'completed' && payroll.comment_count > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[14px] h-[14px] flex items-center justify-center leading-none px-0.5">
+                                {payroll.comment_count}
+                              </span>
+                            )}
+                          </Button>
+                        )}
+                        {payroll.status === 'approved' && canRunPayroll && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+                            onClick={() => handleProcessBatch(payroll)}
+                          >
+                            Process
+                          </Button>
+                        )}
+                        {payroll.status === 'draft' && canRunPayroll && (
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onRunPayroll}>
+                            <Play className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -625,6 +681,16 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
           </div>
         </div>
       </div>
+      {commentsModal && (
+        <CommentsModal
+          open={!!commentsModal}
+          onOpenChange={open => { if (!open) setCommentsModal(null); }}
+          approvalId={commentsModal.approvalId}
+          batchLabel={commentsModal.batchLabel}
+          batchStatus={commentsModal.batchStatus}
+          onStatusChanged={() => { setCommentsModal(null); window.location.reload(); }}
+        />
+      )}
     </div>
   );
 };

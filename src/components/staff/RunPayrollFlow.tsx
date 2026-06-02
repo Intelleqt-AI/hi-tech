@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { postData, downloadFile } from '@/lib/Api';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,13 +19,24 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import useFetch from '@/hooks/useFetch';
 
+interface ApprovedBatch {
+  id: number;
+  start_date: string;
+  end_date: string;
+  total_net: number;
+  total_employees: number;
+}
+
 interface RunPayrollFlowProps {
   onBack: () => void;
   onComplete: () => void;
+  approvedBatch?: ApprovedBatch;
 }
 
-const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
+const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canSubmit = user?.role !== 'viewer';
   const [currentStep, setCurrentStep] = useState(1);
   /* const [selectedEmployees, setSelectedEmployees] = useState<any[]>([]); */
   const [selectedEmployees, setSelectedEmployees] = useState<any[]>([]);
@@ -42,6 +54,8 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
     pay_date: '',
   });
   const [payrollId, setPayrollId] = useState<string>(null);
+  const [finalizing, setFinalizing] = useState(false);
+  const [finalized, setFinalized] = useState(false);
 
   /*
   const {
@@ -249,6 +263,33 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
       // But we might want basic info for Step 2. (Already handled by wageReportData)
     }
   }, [selectedEmployees]);
+
+  // Jump straight to Confirm & Process when opening an already-approved batch
+  useEffect(() => {
+    if (approvedBatch) {
+      setPayrollId(approvedBatch.id.toString());
+      setPayPeriod({
+        start_date: approvedBatch.start_date,
+        end_date: approvedBatch.end_date,
+        pay_date: '',
+      });
+      setCurrentStep(4);
+    }
+  }, []);
+
+  const handleFinalizeApproved = async () => {
+    if (!approvedBatch) return;
+    setFinalizing(true);
+    try {
+      await postData({ url: 'atg/attendance/process-payroll-batch/', data: { batch_id: approvedBatch.id } });
+      setFinalized(true);
+      toast({ title: 'Payroll Finalized', description: 'Payroll processed and completed.' });
+    } catch {
+      toast({ title: 'Error', description: 'Could not finalize. Try again.', variant: 'destructive' });
+    } finally {
+      setFinalizing(false);
+    }
+  };
 
   const renderStep1 = () => (
     <div className="space-y-6">
@@ -741,67 +782,98 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
                 </div>
                 <div className="flex justify-between">
                   <span>Employees:</span>
-                  <span>{selectedEmployees.length}</span>
+                  <span>{approvedBatch ? approvedBatch.total_employees : selectedEmployees.length}</span>
                 </div>
                 <div className="flex justify-between font-medium">
                   <span>Total Net Pay:</span>
-                  <span className="text-green-600">{formatCurrency(payRollInfo.reduce((sum, calc) => sum + calc.net_pay, 0))}</span>
+                  <span className="text-green-600">
+                    {approvedBatch
+                      ? formatCurrency(approvedBatch.total_net)
+                      : formatCurrency(payRollInfo.reduce((sum, calc) => sum + calc.net_pay, 0))}
+                  </span>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* <div>
-              <h4 className="font-medium text-sm mb-2">Processing Options</h4>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox defaultChecked />
-                  <span className="text-sm">Save payroll records</span>
+          {/* Approved batch mode */}
+          {approvedBatch && (
+            <>
+              {finalized ? (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>Payroll finalized and completed. Downloads ready below.</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox defaultChecked />
-                  <span className="text-sm">Export CSV report</span>
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-sm">
+                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>Payroll approved — click Finalize to process and enable downloads.</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox />
-                  <span className="text-sm">Email payslips to employees</span>
-                </div>
+              )}
+              <div className="flex gap-2 pt-2 print:hidden print-hidden">
+                {!finalized && (
+                  <Button onClick={handleFinalizeApproved} className="bg-green-600 hover:bg-green-700" disabled={finalizing}>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {finalizing ? 'Finalizing...' : 'Finalize Payroll'}
+                  </Button>
+                )}
+                <Button variant="outline" onClick={handleDownloadReport} disabled={!finalized}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Report
+                </Button>
+                <Button variant="outline" onClick={handleDownloadCellPhoneCSV} disabled={!finalized}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Cell Phone CSV
+                </Button>
+                <Button variant="outline" onClick={() => window.print()}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print
+                </Button>
               </div>
-            </div> */}
-          </div>
+            </>
+          )}
 
-          <div className="flex gap-2 pt-2 print:hidden print-hidden">
-            <Button onClick={handleProcessPayroll} className="bg-green-600 hover:bg-green-700" disabled={!!payrollId}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              {payrollId ? 'Payroll Processed' : 'Process Payroll'}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleDownloadReport}
-              disabled={!payrollId}
-              className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200 disabled:hover:bg-gray-200 disabled:hover:text-gray-500 disabled:hover:border-gray-200 disabled:hover:cursor-not-allowed"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download Report
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleDownloadCellPhoneCSV}
-              disabled={!payrollId}
-              className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200 disabled:hover:bg-gray-200 disabled:hover:text-gray-500 disabled:hover:border-gray-200 disabled:hover:cursor-not-allowed"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Cell Phone CSV
-            </Button>
-            <Button variant="outline" onClick={() => window.print()}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
-            {/* {payrollId && (
-              <Button onClick={onComplete} className="bg-blue-600 hover:bg-blue-700">
-                Finish
-              </Button>
-            )} */}
-          </div>
+          {/* Normal new-payroll mode */}
+          {!approvedBatch && (
+            <>
+              {payrollId && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm mb-2">
+                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>Submitted for approval — awaiting review before processing.</span>
+                </div>
+              )}
+              <div className="flex gap-2 pt-2 print:hidden print-hidden">
+                {canSubmit && (
+                  <Button onClick={handleProcessPayroll} className="bg-green-600 hover:bg-green-700" disabled={!!payrollId || processPayrollMutation.isPending}>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {payrollId ? 'Submitted for Approval' : processPayrollMutation.isPending ? 'Submitting...' : 'Submit for Approval'}
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadReport}
+                  disabled={true}
+                  className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200 disabled:hover:bg-gray-200 disabled:hover:text-gray-500 disabled:hover:border-gray-200 disabled:hover:cursor-not-allowed"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Report
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadCellPhoneCSV}
+                  disabled={true}
+                  className="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200 disabled:hover:bg-gray-200 disabled:hover:text-gray-500 disabled:hover:border-gray-200 disabled:hover:cursor-not-allowed"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Cell Phone CSV
+                </Button>
+                <Button variant="outline" onClick={() => window.print()}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -835,28 +907,10 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
     mutationFn: (data: any) => postData({ url: 'atg/attendance/save-payroll-run/', data }),
     onSuccess: data => {
       setPayrollId(data.batch_id);
-
-      const sync = data.simplepay_sync;
-      if (!sync || sync.status === 'not_run') {
-        toast({ title: 'Payroll saved', description: 'SimplePay sync was not configured.' });
-      } else if (sync.status === 'error') {
-        toast({
-          title: 'Payroll saved — SimplePay sync failed',
-          description: sync.error || 'Unknown error',
-          variant: 'destructive',
-        });
-      } else if (sync.errors && sync.errors.length > 0) {
-        toast({
-          title: `Payroll saved — ${sync.synced} synced to SimplePay`,
-          description: sync.errors.slice(0, 3).join(' | '),
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Payroll saved & synced',
-          description: `${sync.synced} employee${sync.synced !== 1 ? 's' : ''} sent to SimplePay.`,
-        });
-      }
+      toast({
+        title: 'Payroll Submitted for Approval',
+        description: 'An admin will review and approve before processing.',
+      });
     },
     onError: error => {
       console.error('Error processing payroll:', error);

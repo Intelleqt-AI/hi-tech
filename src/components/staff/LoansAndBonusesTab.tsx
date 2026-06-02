@@ -9,12 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText } from 'lucide-react';
+import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import useFetch from '@/hooks/useFetch';
+import { useAuth } from '@/contexts/AuthContext';
 import { usePost } from '@/hooks/usePost';
 import { usePut } from '@/hooks/usePut';
+import CommentsModal from '@/components/CommentsModal';
 
 interface Loan {
   id: number;
@@ -27,6 +30,13 @@ interface Loan {
   start_date: string;
   interest_rate?: string;
   notes?: string;
+  approval_status?: string;
+  approval_id?: number;
+  query_comment?: string;
+  member_reply?: string;
+  comment_count?: number;
+  approved_at?: string;
+  approved_by?: string;
 }
 
 interface StaffMember {
@@ -49,10 +59,17 @@ interface Bonus {
   reason?: string;
   status: string;
   created_at: string;
+  approval_id?: number;
+  query_comment?: string;
+  comment_count?: number;
+  approved_at?: string;
+  approved_by?: string;
 }
 
 const LoansAndBonusesTab = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canWrite = user?.role !== 'viewer';
 
   const { data: staffMembers } = useFetch<StaffMember[]>('staff/members/');
   const { data: loansData, isLoading: loansLoading, refetch: refetchLoans } = useFetch<Loan[]>('staff/loans/');
@@ -64,6 +81,7 @@ const LoansAndBonusesTab = () => {
   const [showBonusDialog, setShowBonusDialog] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
   const [editingBonus, setEditingBonus] = useState<Bonus | null>(null);
+  const [commentsModal, setCommentsModal] = useState<{ approvalId: number; itemLabel: string; itemStatus: string } | null>(null);
 
   const [loanForm, setLoanForm] = useState({
     employee_id: '',
@@ -142,8 +160,8 @@ const LoansAndBonusesTab = () => {
       }
 
       toast({
-        title: "Success",
-        description: `Loan ${editingLoan ? 'updated' : 'created'} successfully`,
+        title: editingLoan ? 'Loan Updated' : 'Loan Submitted for Approval',
+        description: editingLoan ? 'Loan updated successfully.' : 'Awaiting approval before it takes effect.',
       });
 
       setShowLoanDialog(false);
@@ -193,8 +211,8 @@ const LoansAndBonusesTab = () => {
       }
 
       toast({
-        title: "Success",
-        description: `Bonus ${editingBonus ? 'updated' : 'created'} successfully`,
+        title: editingBonus ? 'Bonus Updated' : 'Bonus Submitted for Approval',
+        description: editingBonus ? 'Bonus updated successfully.' : 'Awaiting approval before it takes effect.',
       });
 
       setShowBonusDialog(false);
@@ -302,12 +320,14 @@ const LoansAndBonusesTab = () => {
               Employee Loans
             </h3>
             <Dialog open={showLoanDialog} onOpenChange={setShowLoanDialog}>
+              {canWrite && (
               <DialogTrigger asChild>
                 <Button onClick={() => setEditingLoan(null)}>
                   <Plus className="h-4 w-4 mr-2" />
                   New Loan
                 </Button>
               </DialogTrigger>
+              )}
               <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingLoan ? 'Edit Loan' : 'Create New Loan'}</DialogTitle>
@@ -469,9 +489,11 @@ const LoansAndBonusesTab = () => {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button type="submit" className="flex-1">
-                      {editingLoan ? 'Update Loan' : 'Create Loan'}
-                    </Button>
+                    {canWrite && editingLoan?.approval_status !== 'approved' && (
+                      <Button type="submit" className="flex-1">
+                        {editingLoan ? 'Update Loan' : 'Create Loan'}
+                      </Button>
+                    )}
                     <Button type="button" variant="outline" onClick={() => setShowLoanDialog(false)}>
                       Cancel
                     </Button>
@@ -489,6 +511,7 @@ const LoansAndBonusesTab = () => {
                   <tr>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Staff Member</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Loan Type</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Status</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Date Issued</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Amount</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Term</th>
@@ -502,14 +525,51 @@ const LoansAndBonusesTab = () => {
                         {loan.staff_member_name}
                       </td>
                       <td className="py-2 px-4 text-xs">{loan.loan_type}</td>
+                      <td className="py-2 px-4 text-xs">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium cursor-default ${loan.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
+                                {loan.approval_status === 'approved' ? 'Approved' : 'Pending'}
+                              </span>
+                            </TooltipTrigger>
+                            {loan.approval_status === 'approved' && loan.approved_by && (
+                              <TooltipContent>
+                                Approved by {loan.approved_by}
+                                {loan.approved_at && ` on ${new Date(loan.approved_at).toLocaleString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      </td>
                       <td className="py-2 px-4 text-xs">{new Date(loan.start_date).toLocaleDateString()}</td>
                       <td className="py-2 px-4 text-xs">R{parseFloat(loan.amount).toFixed(2)}</td>
                       <td className="py-2 px-4 text-xs">{loan.term_duration} {loan.term_type}</td>
                       <td className="py-2 px-4">
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-1">
                           <Button size="sm" variant="outline" onClick={() => editLoan(loan)} className="text-xs">
-                            <Edit className="h-3 w-3" />
+                            {canWrite && loan.approval_status !== 'approved' ? <Edit className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                           </Button>
+                          {loan.approval_id && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground relative"
+                              title="View thread"
+                              onClick={() => setCommentsModal({
+                                approvalId: loan.approval_id,
+                                itemLabel: `Loan — ${loan.staff_member_name}`,
+                                itemStatus: loan.query_comment ? 'queried' : loan.approval_status || 'pending',
+                              })}
+                            >
+                              <MessageSquare className="h-3.5 w-3.5" />
+                              {loan.approval_status !== 'approved' && (loan.comment_count ?? 0) > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[14px] h-[14px] flex items-center justify-center leading-none px-0.5">
+                                  {loan.comment_count}
+                                </span>
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -538,12 +598,14 @@ const LoansAndBonusesTab = () => {
               Employee Bonuses
             </h3>
             <Dialog open={showBonusDialog} onOpenChange={setShowBonusDialog}>
+              {canWrite && (
               <DialogTrigger asChild>
                 <Button onClick={() => setEditingBonus(null)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Bonus
                 </Button>
               </DialogTrigger>
+              )}
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>{editingBonus ? 'Edit Bonus' : 'Add New Bonus'}</DialogTitle>
@@ -610,9 +672,11 @@ const LoansAndBonusesTab = () => {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button type="submit" className="flex-1">
-                      {editingBonus ? 'Update Bonus' : 'Add Bonus'}
-                    </Button>
+                    {canWrite && editingBonus?.status !== 'approved' && (
+                      <Button type="submit" className="flex-1">
+                        {editingBonus ? 'Update Bonus' : 'Add Bonus'}
+                      </Button>
+                    )}
                     <Button type="button" variant="outline" onClick={() => setShowBonusDialog(false)}>
                       Cancel
                     </Button>
@@ -645,12 +709,46 @@ const LoansAndBonusesTab = () => {
                       <td className="py-2 px-4 text-xs">{new Date(bonus.created_at).toLocaleDateString()}</td>
                       <td className="py-2 px-4 text-xs">R{parseFloat(bonus.amount).toFixed(2)}</td>
                       <td className="py-2 px-4 text-xs">{bonus.reason}</td>
-                      <td className="py-2 px-4">{getStatusBadge(bonus.status)}</td>
                       <td className="py-2 px-4">
-                        <div className="flex gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-default">{getStatusBadge(bonus.status)}</span>
+                            </TooltipTrigger>
+                            {bonus.status === 'approved' && bonus.approved_by && (
+                              <TooltipContent>
+                                Approved by {bonus.approved_by}
+                                {bonus.approved_at && ` on ${new Date(bonus.approved_at).toLocaleString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      </td>
+                      <td className="py-2 px-4">
+                        <div className="flex items-center gap-1">
                           <Button size="sm" variant="outline" onClick={() => editBonus(bonus)} className="text-xs">
-                            <Edit className="h-3 w-3" />
+                            {canWrite && bonus.status !== 'approved' ? <Edit className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                           </Button>
+                          {bonus.approval_id && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground relative"
+                              title="View thread"
+                              onClick={() => setCommentsModal({
+                                approvalId: bonus.approval_id,
+                                itemLabel: `Bonus — ${bonus.staff_member_name}`,
+                                itemStatus: bonus.query_comment ? 'queried' : bonus.status,
+                              })}
+                            >
+                              <MessageSquare className="h-3.5 w-3.5" />
+                              {bonus.status !== 'approved' && (bonus.comment_count ?? 0) > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[14px] h-[14px] flex items-center justify-center leading-none px-0.5">
+                                  {bonus.comment_count}
+                                </span>
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -667,6 +765,16 @@ const LoansAndBonusesTab = () => {
             </div>
           </div>
         </div>
+      )}
+      {commentsModal && (
+        <CommentsModal
+          open={!!commentsModal}
+          onOpenChange={open => { if (!open) setCommentsModal(null); }}
+          approvalId={commentsModal.approvalId}
+          batchLabel={commentsModal.itemLabel}
+          batchStatus={commentsModal.itemStatus}
+          onStatusChanged={() => setCommentsModal(null)}
+        />
       )}
     </div>
   );

@@ -12,16 +12,18 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
-import { BarChart3, ShoppingCart, Factory, Shield, Package, Users, TrendingUp, Settings, Building, LogOut, ChevronRight, HandCoins } from 'lucide-react';
+import { BarChart3, ShoppingCart, Factory, Shield, Package, Users, TrendingUp, Settings, Building, LogOut, ChevronRight, HandCoins, ClipboardCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const AppSidebar = () => {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isAdmin = user?.role === 'admin';
+  const isViewer = user?.role === 'viewer';
 
   const menuItems = [
     { id: 'staff', label: 'Staff', icon: Users, path: '/staff' },
@@ -31,6 +33,7 @@ const AppSidebar = () => {
         { id: 'weekend-payroll', label: 'Weekend Payroll', path: '/payroll/weekend' },
       ]
     },
+    ...(isAdmin ? [{ id: 'approvals', label: 'Approvals', icon: ClipboardCheck, path: '/approvals' }] : []),
   ];
 
   const isActive = (path) => {

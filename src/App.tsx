@@ -16,6 +16,7 @@ import TimeAttendanceTab from "./components/staff/TimeAttendanceTab";
 import LoansAndBonusesTab from "./components/staff/LoansAndBonusesTab";
 import StaffDirectory from "./components/staff/StaffDirectory";
 import PayrollBatchSlips from "./pages/PayrollBatchSlips";
+import ApprovalsPage from "./pages/Approvals";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
 
+  return <>{children}</>;
+};
+
+// Viewer Route wrapper (redirects viewers away from write-action pages)
+const ViewerRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
+  if (user?.role === 'viewer') return <Navigate to="/staff/directory" replace />;
   return <>{children}</>;
 };
 
@@ -92,6 +100,7 @@ const AppRoutes = () => {
         <Route path="/payroll/general" element={<GeneralPayroll />} />
         <Route path="/payroll/weekend" element={<WeekendPayroll />} />
         <Route path="/staff/payroll-batches/:id/slips" element={<PayrollBatchSlips />} />
+        <Route path="/approvals" element={<ApprovalsPage />} />
       </Route>
 
       {/* 404 */}

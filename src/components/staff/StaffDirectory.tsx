@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '../ui/textarea';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ─── Choices (must match backend model exactly) ───────────────────────────────
 
@@ -168,6 +169,8 @@ const StaffDirectory = () => {
   });
 
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canWrite = user?.role !== 'viewer';
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
@@ -496,14 +499,18 @@ const StaffDirectory = () => {
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Staff Directory</h3>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowRateIncreaseDialog(true)}>
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Rate Increase
-          </Button>
-          <Button onClick={() => setShowAddStaffDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add new staff
-          </Button>
+          {canWrite && (
+            <>
+              <Button variant="outline" onClick={() => setShowRateIncreaseDialog(true)}>
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Rate Increase
+              </Button>
+              <Button onClick={() => setShowAddStaffDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add new staff
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -649,9 +656,11 @@ const StaffDirectory = () => {
               <Button type="button" variant="outline" onClick={() => setShowEditStaffDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isEditing}>
-                {isEditing ? 'Saving...' : 'Save Changes'}
-              </Button>
+              {canWrite && (
+                <Button type="submit" disabled={isEditing}>
+                  {isEditing ? 'Saving...' : 'Save Changes'}
+                </Button>
+              )}
             </div>
           </form>
         </DialogContent>
@@ -717,12 +726,20 @@ const StaffDirectory = () => {
                     </td>
                     <td className="py-2 px-4" onClick={e => e.stopPropagation()}>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="text-xs" onClick={e => handleEditStaff(employee, e)}>
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="destructive" className="text-xs" onClick={e => confirmDelete(e, employee.id)}>
-                          Delete
-                        </Button>
+                        {canWrite ? (
+                          <>
+                            <Button size="sm" variant="outline" className="text-xs" onClick={e => handleEditStaff(employee, e)}>
+                              Edit
+                            </Button>
+                            <Button size="sm" variant="destructive" className="text-xs" onClick={e => confirmDelete(e, employee.id)}>
+                              Delete
+                            </Button>
+                          </>
+                        ) : (
+                          <Button size="sm" variant="outline" className="text-xs" onClick={e => handleEditStaff(employee, e)}>
+                            View
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
