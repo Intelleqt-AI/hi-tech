@@ -4,14 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, Calendar, FileText, Play, Eye, Download, Filter, MessageSquare } from 'lucide-react';
+import { DollarSign, Calendar, FileText, Play, Eye, Download, Filter, MessageSquare, Trash2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { generatePayrollPDF, PayrollSummaryData } from '@/utils/payrollPDF';
-import { fetchEntries, downloadFile } from '@/lib/Api';
+import { fetchEntries, downloadFile, deleteData } from '@/lib/Api';
 import { useQuery } from '@tanstack/react-query';
 import useFetch from '@/hooks/useFetch';
 import CommentsModal from '@/components/CommentsModal';
@@ -80,10 +81,12 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
   const canRunPayroll = user?.role !== 'viewer';
   const [payrollPeriods, setPayrollPeriods] = useState([]);
   const [commentsModal, setCommentsModal] = useState<{ approvalId: number; batchLabel: string; batchStatus: string } | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const currentPeriod = calculatePayPeriods();
 
-  const { data: apiPayrollData, isLoading: isApiLoading } = useFetch('atg/attendance/recent-payroll-runs/');
+  const { data: apiPayrollData, isLoading: isApiLoading, refetch: refetchPayrolls } = useFetch('atg/attendance/recent-payroll-runs/');
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['entries', currentPeriod?.startDate, currentPeriod?.endDate],
@@ -396,6 +399,21 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     });
   };
 
+  const handleDeleteBatch = async () => {
+    if (!deleteConfirmId) return;
+    setDeleting(true);
+    try {
+      await deleteData({ url: `staff/payroll-batches/${deleteConfirmId}/` });
+      toast({ title: 'Deleted', description: 'Payroll batch deleted.' });
+      setDeleteConfirmId(null);
+      refetchPayrolls();
+    } catch {
+      toast({ title: 'Error', description: 'Could not delete batch.', variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending':
@@ -656,6 +674,17 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                             <Play className="h-3 w-3" />
                           </Button>
                         )}
+                        {canRunPayroll && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-red-400 hover:text-red-600"
+                            title="Delete batch"
+                            onClick={() => setDeleteConfirmId(payroll.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -691,6 +720,27 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
           onStatusChanged={() => { setCommentsModal(null); window.location.reload(); }}
         />
       )}
+
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={open => { if (!open) setDeleteConfirmId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete payroll batch?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the batch and all its payslips. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteBatch}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
