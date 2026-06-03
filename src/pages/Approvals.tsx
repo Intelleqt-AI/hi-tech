@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, MessageSquare, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle, XCircle, MessageSquare, Clock, ChevronDown, ChevronUp, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import useFetch from '@/hooks/useFetch';
-import { postData } from '@/lib/Api';
+import { postData, downloadFile } from '@/lib/Api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import CommentsModal from '@/components/CommentsModal';
@@ -179,6 +179,20 @@ const ApprovalCard = ({
               <DetailRow label="Period" value={`${detail.start_date} → ${detail.end_date}`} />
               <DetailRow label="Total Gross" value={`R${parseFloat(detail.total_gross).toFixed(2)}`} />
               <DetailRow label="Total Net" value={`R${parseFloat(detail.total_net).toFixed(2)}`} />
+              <div className="pt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1.5 w-full"
+                  onClick={() => downloadFile(
+                    `staff/payroll-batches/${detail.id}/export-report/`,
+                    `Payroll_${detail.start_date}_to_${detail.end_date}.xlsx`
+                  )}
+                >
+                  <FileDown className="h-3.5 w-3.5" />
+                  View Payroll
+                </Button>
+              </div>
             </>
           )}
         </div>
