@@ -1,22 +1,22 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import LoginPage from "./pages/Login";
-import SignupPage from "./pages/Signup";
-import NotFound from "./pages/NotFound";
-import WeekendPayroll from "./pages/WeekendPayroll";
-import GeneralPayroll from "./pages/GeneralPayroll";
-import StaffPage from "./pages/Staff";
-import Dashboard from "./pages/Dashboard";
-import Layout from "./components/Layout";
-import TimeAttendanceTab from "./components/staff/TimeAttendanceTab";
-import LoansAndBonusesTab from "./components/staff/LoansAndBonusesTab";
-import StaffDirectory from "./components/staff/StaffDirectory";
-import PayrollBatchSlips from "./pages/PayrollBatchSlips";
-import ApprovalsPage from "./pages/Approvals";
+import { Toaster } from '@/components/ui/toaster';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LoginPage from './pages/Login';
+import SignupPage from './pages/Signup';
+import NotFound from './pages/NotFound';
+import WeekendPayroll from './pages/WeekendPayroll';
+import GeneralPayroll from './pages/GeneralPayroll';
+import StaffPage from './pages/Staff';
+import Dashboard from './pages/Dashboard';
+import Layout from './components/Layout';
+import TimeAttendanceTab from './components/staff/TimeAttendanceTab';
+import LoansAndBonusesTab from './components/staff/LoansAndBonusesTab';
+import StaffDirectory from './components/staff/StaffDirectory';
+import PayrollBatchSlips from './pages/PayrollBatchSlips';
+import ApprovalsPage from './pages/Approvals';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,15 +84,35 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-      <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <PublicRoute>
+            <SignupPage />
+          </PublicRoute>
+        }
+      />
 
       {/* Protected Routes */}
-      <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+      <Route
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
         <Route path="/" element={<Navigate to="/staff" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/staff" element={<StaffPage />}>
-          <Route index element={<Navigate to="directory" replace />} />
+          <Route index element={<Navigate to="attendance" replace />} />
           <Route path="directory" element={<StaffDirectory />} />
           <Route path="attendance" element={<TimeAttendanceTab />} />
           <Route path="loans" element={<LoansAndBonusesTab />} />

@@ -715,17 +715,18 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
   const renderStep5 = () => (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="text-base print:text-xl flex items-center gap-2">
           <CheckCircle className="h-4 w-4 text-green-600" />
-          Confirm & Process Payroll
+          <span className="print:hidden">Confirm & Process Payroll</span>
+          <span className="hidden print:inline">Payroll Info</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-6">
             <div>
-              <h4 className="font-medium text-sm mb-2">Payroll Summary</h4>
-              <div className="space-y-1 text-sm">
+              <h4 className="font-medium text-sm print:text-base mb-2">Payroll Summary</h4>
+              <div className="space-y-1 text-sm print:text-base print:space-y-2">
                 <div className="flex justify-between">
                   <span>Period:</span>
                   <span>
@@ -740,7 +741,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
                   <span>Employees:</span>
                   <span>{approvedBatch ? approvedBatch.total_employees : selectedEmployees.length}</span>
                 </div>
-                <div className="flex justify-between font-medium">
+                <div className="flex justify-between font-medium print:font-semibold print:text-lg print:border-t print:pt-1">
                   <span>Total Net Pay:</span>
                   <span className="text-green-600">
                     {approvedBatch
@@ -876,6 +877,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
       end_date: payPeriod.end_date,
       type: 'weekend',
       factory: selectedCompany,
+      staff_type: selectedStaffType,
       records: payRollInfo.map(
         (calc: {
           id: number;

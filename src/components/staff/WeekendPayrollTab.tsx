@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, Calendar, FileText, Play, Eye, Download, Filter, MessageSquare, Trash2 } from 'lucide-react';
+import { DollarSign, Calendar, FileText, Play, Eye, Download, Filter, MessageSquare, Trash2, Printer } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,6 +81,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
   const [payrollPeriods, setPayrollPeriods] = useState([]);
   const [commentsModal, setCommentsModal] = useState<{ approvalId: number; batchLabel: string; batchStatus: string } | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [printBatch, setPrintBatch] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
 
   const currentPeriod = calculatePayPeriods();
@@ -399,6 +400,14 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     });
   };
 
+  const handlePrintBatch = (payroll: any) => {
+    setPrintBatch(payroll);
+    setTimeout(() => {
+      window.print();
+      setPrintBatch(null);
+    }, 100);
+  };
+
   const handleDeleteBatch = async () => {
     if (!deleteConfirmId) return;
     setDeleting(true);
@@ -579,6 +588,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Bank CSV</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Cell CSV</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">View</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Print</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Status</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Actions</th>
                 </tr>
@@ -622,6 +632,11 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                       <button onClick={() => navigate(`/staff/payroll-batches/${payroll.id}/slips`)}>
                         <Eye className="h-4 w-4 cursor-pointer hover:text-primary" />
                       </button>
+                    </td>
+                    <td className="py-2 px-4">
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Print" onClick={() => handlePrintBatch(payroll)}>
+                        <Printer className="h-3.5 w-3.5" />
+                      </Button>
                     </td>
                     <td className="py-2 px-4">
                       <TooltipProvider>
@@ -722,6 +737,39 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
           onStatusChanged={() => { setCommentsModal(null); window.location.reload(); }}
         />
       )}
+
+      {printBatch && (() => {
+        const fmt = (n: number) => `R ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return (
+          <div className="hidden print:block fixed inset-0 bg-white z-50 p-8">
+            <h2 className="text-2xl font-bold mb-1">Run Payroll (Weekend)</h2>
+            <p className="text-base text-muted-foreground mb-6">{printBatch.start_date} to {printBatch.end_date}</p>
+            <div className="border rounded-lg">
+              <div className="px-6 py-4 border-b">
+                <div className="text-lg font-semibold flex items-center gap-2">
+                  <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  Payroll Info
+                </div>
+              </div>
+              <div className="px-6 py-5">
+                <h4 className="font-medium text-base mb-3">Payroll Summary</h4>
+                <div className="space-y-2 text-base">
+                  <div className="flex justify-between"><span>Company:</span><span className="capitalize">{printBatch.factory}</span></div>
+                  <div className="flex justify-between"><span>Staff Type:</span><span className="capitalize">{printBatch.staff_type || '—'}</span></div>
+                  <div className="flex justify-between"><span>Period:</span><span>{printBatch.start_date} to {printBatch.end_date}</span></div>
+                  <div className="flex justify-between"><span>Pay Date:</span><span>{printBatch.payment_date ? new Date(printBatch.payment_date).toLocaleDateString() : '—'}</span></div>
+                  <div className="flex justify-between"><span>Employees:</span><span>{printBatch.total_employees || 0}</span></div>
+                  <div className="flex justify-between"><span>Deductions:</span><span>{fmt(printBatch.total_deductions || 0)}</span></div>
+                  <div className="flex justify-between"><span>Loans:</span><span>{fmt(printBatch.total_loans || 0)}</span></div>
+                  <div className="flex justify-between text-muted-foreground"><span>Net Pay to Bank Account:</span><span>{fmt(printBatch.net_pay_bank || 0)}</span></div>
+                  <div className="flex justify-between text-muted-foreground"><span>Net Pay to Cell Phone:</span><span>{fmt(printBatch.net_pay_cell || 0)}</span></div>
+                  <div className="flex justify-between font-semibold text-lg pt-1 border-t"><span>Total Net Pay:</span><span className="text-green-600">{fmt(printBatch.total_net_pay || 0)}</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <AlertDialog open={!!deleteConfirmId} onOpenChange={open => { if (!open) setDeleteConfirmId(null); }}>
         <AlertDialogContent>

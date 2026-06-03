@@ -20,8 +20,8 @@ export const fetchEntries = async ({ date_from, date_to, selectedDate }) => {
       };
 
   try {
-    const response = await api.post('api/entries', body);
-    return response.data;
+    // const response = await api.post('api/entries', body);
+    return [];
   } catch (error) {
     throw new Error('Network response was not ok');
   }
