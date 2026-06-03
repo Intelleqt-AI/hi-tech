@@ -575,7 +575,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Type</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Employees</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Total Cost</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Run Date</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Pay Date</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Bank CSV</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Cell CSV</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">View</th>
@@ -604,7 +604,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                     <td className="py-2 px-4 text-xs">{payroll.total_employees || 0} staff</td>
                     <td className="py-2 px-4 text-xs font-medium">R{(payroll.total_net_pay || 0).toLocaleString()}</td>
                     <td className="py-2 px-4 text-xs">
-                      {payroll.status === 'completed' ? new Date(payroll.pay_date).toLocaleDateString() : '-'}
+                      {payroll.payment_date ? new Date(payroll.payment_date).toLocaleDateString() : '-'}
                     </td>
                     {/* Bank CSV */}
                     <td className="py-2 px-4">

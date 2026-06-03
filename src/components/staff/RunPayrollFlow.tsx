@@ -122,7 +122,8 @@ const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowPro
     // Helper to push period info
     const pushPeriod = (id: number, start: Date, status: string) => {
       const end = addDays(start, 13);
-      const payDate = addDays(end, 1); // Next day after endDate
+      const daysToFriday = ((5 - end.getDay()) % 7 + 7) % 7 || 7; // next Friday strictly after end
+      const payDate = addDays(end, daysToFriday);
 
       periods.push({
         id,
@@ -784,6 +785,18 @@ const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowPro
                   <span>Employees:</span>
                   <span>{approvedBatch ? approvedBatch.total_employees : selectedEmployees.length}</span>
                 </div>
+                {!approvedBatch && (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Deductions:</span>
+                      <span>{formatCurrency(payRollInfo.reduce((sum, c) => sum + c.other_deductions, 0))}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Loans:</span>
+                      <span>{formatCurrency(payRollInfo.reduce((sum, c) => sum + c.loan_deductions, 0))}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between font-medium">
                   <span>Total Net Pay:</span>
                   <span className="text-green-600">
@@ -792,6 +805,18 @@ const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowPro
                       : formatCurrency(payRollInfo.reduce((sum, calc) => sum + calc.net_pay, 0))}
                   </span>
                 </div>
+                {!approvedBatch && (
+                  <>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Net Pay to Bank Account:</span>
+                      <span>{formatCurrency(payRollInfo.filter(e => !e.phone_number).reduce((sum, c) => sum + c.net_pay, 0))}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Net Pay to Cell Phone:</span>
+                      <span>{formatCurrency(payRollInfo.filter(e => !!e.phone_number).reduce((sum, c) => sum + c.net_pay, 0))}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
