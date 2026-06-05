@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search, Mail, DollarSign, Paperclip, X, FileText, TrendingUp, UserX, UserCheck, Trash2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -994,9 +995,24 @@ const StaffDirectory = () => {
                           {employee.employee_type}
                         </Badge>
                         {employee.is_absconded && (
-                          <Badge className="text-xs w-fit bg-orange-100 text-orange-700 border-orange-300">
-                            Absconded
-                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge className="text-xs w-fit bg-orange-100 text-orange-700 border-orange-300 cursor-help">
+                                  Absconded
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                {employee.absconded_reason
+                                  ? <><p className="font-medium mb-0.5">Reason</p><p>{employee.absconded_reason}</p></>
+                                  : <p className="text-muted-foreground">No reason recorded</p>
+                                }
+                                {employee.absconded_date && (
+                                  <p className="text-xs mt-1 text-muted-foreground">Since {new Date(employee.absconded_date).toLocaleDateString()}</p>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                       </div>
                     </td>
@@ -1206,6 +1222,26 @@ const StaffDirectory = () => {
                           <p className="text-gray-900">{(selectedEmployee as any).clock_number || 'N/A'}</p>
                         </div>
                       </div>
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {(() => { const emp = selectedEmployee as any; return emp?.is_absconded ? (
+                        <div className="mt-3 rounded-md border border-orange-200 bg-orange-50 p-3 space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <UserX className="h-4 w-4 text-orange-500" />
+                            <p className="text-sm font-semibold text-orange-700">Absconded</p>
+                            {emp.absconded_date && (
+                              <span className="text-xs text-orange-500 ml-auto">Since {new Date(emp.absconded_date).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                          {emp.absconded_reason ? (
+                            <p className="text-sm text-orange-800">{emp.absconded_reason}</p>
+                          ) : (
+                            <p className="text-xs text-orange-400 italic">No reason recorded</p>
+                          )}
+                          {emp.reactivated_date && (
+                            <p className="text-xs text-gray-500">Last reactivated: {new Date(emp.reactivated_date).toLocaleDateString()}</p>
+                          )}
+                        </div>
+                      ) : null; })()}
                     </CardContent>
                   </Card>
                 </TabsContent>
