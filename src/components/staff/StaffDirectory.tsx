@@ -882,9 +882,9 @@ const StaffDirectory = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input placeholder="Search staff..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+          <Input placeholder="Search staff..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="pl-10" />
         </div>
-        <Select value={filterType} onValueChange={v => { setFilterType(v); setSelectedIds([]); }}>
+        <Select value={filterType} onValueChange={v => { setFilterType(v); setSelectedIds([]); setCurrentPage(1); }}>
           <SelectTrigger>
             <SelectValue placeholder="Type" />
           </SelectTrigger>
@@ -895,7 +895,7 @@ const StaffDirectory = () => {
             ))}
           </SelectContent>
         </Select>
-        <Select value={filterAbsconded} onValueChange={(v: any) => { setFilterAbsconded(v); setSelectedIds([]); }}>
+        <Select value={filterAbsconded} onValueChange={(v: any) => { setFilterAbsconded(v); setSelectedIds([]); setCurrentPage(1); }}>
           <SelectTrigger>
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -1044,6 +1044,74 @@ const StaffDirectory = () => {
               </tbody>
             </table>
           </div>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-white">
+              <p className="text-xs text-gray-500">
+                Showing {startIdx + 1}–{Math.min(startIdx + itemsPerPage, filteredStaff.length)} of {filteredStaff.length} staff
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs px-2"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(1)}
+                >
+                  «
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs px-2"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                >
+                  ‹ Prev
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                  .reduce<(number | '...')[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('...');
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) =>
+                    p === '...' ? (
+                      <span key={`ellipsis-${i}`} className="px-1 text-xs text-gray-400">…</span>
+                    ) : (
+                      <Button
+                        key={p}
+                        size="sm"
+                        variant={currentPage === p ? 'default' : 'outline'}
+                        className="h-7 w-7 text-xs p-0"
+                        onClick={() => setCurrentPage(p as number)}
+                      >
+                        {p}
+                      </Button>
+                    )
+                  )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs px-2"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                >
+                  Next ›
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs px-2"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(totalPages)}
+                >
+                  »
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
