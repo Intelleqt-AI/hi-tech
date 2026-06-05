@@ -24,7 +24,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Mail, DollarSign, Paperclip, X, FileText, TrendingUp } from 'lucide-react';
+import { Plus, Search, Mail, DollarSign, Paperclip, X, FileText, TrendingUp, UserX, UserCheck, Trash2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -135,6 +136,7 @@ const StaffDirectory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  // clear selection on filter change is handled inline via setSelectedIds([])
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [payrollHistory] = useState([]);
@@ -153,6 +155,14 @@ const StaffDirectory = () => {
   });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [staffDocuments, setStaffDocuments] = useState<File[]>([]);
+  const [filterAbsconded, setFilterAbsconded] = useState<'all' | 'active' | 'absconded'>('active');
+  const [abscondId, setAbscondId] = useState<string | null>(null);
+  const [abscondReason, setAbscondReason] = useState('');
+  const [reactivateId, setReactivateId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showBatchAbscondDialog, setShowBatchAbscondDialog] = useState(false);
+  const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false);
+  const [batchAbscondReason, setBatchAbscondReason] = useState('');
   const [showRateIncreaseDialog, setShowRateIncreaseDialog] = useState(false);
   const [rateIncreaseForm, setRateIncreaseForm] = useState({ factory: 'hitec', employee_type: 'permanent', percent: '' });
   const [isApplyingIncrease, setIsApplyingIncrease] = useState(false);
@@ -225,6 +235,84 @@ const StaffDirectory = () => {
     },
   });
 
+  const { mutate: abscondStaff, isPending: isAbsconding } = usePost({
+    onSuccess: () => {
+      toast({ title: 'Staff absconded', description: 'Staff member marked as absconded and removed from payroll.' });
+      setAbscondId(null);
+      setAbscondReason('');
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error?.message || 'Failed to abscond staff', variant: 'destructive' });
+    },
+  });
+
+  const { mutate: reactivateStaff, isPending: isReactivating } = usePost({
+    onSuccess: () => {
+      toast({ title: 'Staff reactivated', description: 'Staff member is now active and will appear in payroll.' });
+      setReactivateId(null);
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error?.message || 'Failed to reactivate staff', variant: 'destructive' });
+    },
+  });
+
+  const handleAbscond = () => {
+    if (abscondId) abscondStaff({ url: `/staff/members/${abscondId}/abscond/`, data: { reason: abscondReason } });
+  };
+
+  const handleReactivate = () => {
+    if (reactivateId) reactivateStaff({ url: `/staff/members/${reactivateId}/reactivate/`, data: {} });
+  };
+
+  const { mutate: batchAbscond, isPending: isBatchAbsconding } = usePost({
+    onSuccess: (data: any) => {
+      toast({ title: 'Batch absconded', description: `${data.updated} staff member(s) marked as absconded.` });
+      setShowBatchAbscondDialog(false);
+      setBatchAbscondReason('');
+      setSelectedIds([]);
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error?.message || 'Batch abscond failed', variant: 'destructive' });
+    },
+  });
+
+  const { mutate: batchDelete, isPending: isBatchDeleting } = usePost({
+    onSuccess: (data: any) => {
+      toast({ title: 'Batch deleted', description: `${data.deleted} staff member(s) permanently deleted.` });
+      setShowBatchDeleteDialog(false);
+      setSelectedIds([]);
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error?.message || 'Batch delete failed', variant: 'destructive' });
+    },
+  });
+
+  const handleBatchAbscond = () => {
+    batchAbscond({ url: '/staff/members/batch-abscond/', data: { ids: selectedIds, reason: batchAbscondReason } });
+  };
+
+  const handleBatchDelete = () => {
+    batchDelete({ url: '/staff/members/batch-delete/', data: { ids: selectedIds } });
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    const pageIds = filteredStaff.slice(startIdx, startIdx + itemsPerPage).map((e: any) => String(e.id));
+    const allSelected = pageIds.every(id => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)));
+    } else {
+      setSelectedIds(prev => [...new Set([...prev, ...pageIds])]);
+    }
+  };
+
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const itemsPerPage = 20;
@@ -238,7 +326,11 @@ const StaffDirectory = () => {
         employee.clock_number?.toLowerCase().includes(searchLower) ||
         employee.email?.toLowerCase().includes(searchLower);
       const matchesType = filterType === 'all' || employee.employee_type?.toLowerCase() === filterType.toLowerCase();
-      return matchesSearch && matchesType;
+      const matchesAbsconded =
+        filterAbsconded === 'all' ||
+        (filterAbsconded === 'active' && !employee.is_absconded) ||
+        (filterAbsconded === 'absconded' && employee.is_absconded);
+      return matchesSearch && matchesType && matchesAbsconded;
     }) || [];
 
   const totalPages = Math.ceil(filteredStaff.length / itemsPerPage);
@@ -532,6 +624,126 @@ const StaffDirectory = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Abscond confirmation dialog */}
+      <AlertDialog open={!!abscondId} onOpenChange={() => { setAbscondId(null); setAbscondReason(''); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <UserX className="h-5 w-5 text-orange-500" />
+              Mark Staff as Absconded?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This staff member will be excluded from all future payroll runs. You can reactivate them at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Label className="text-sm font-medium">Reason (optional)</Label>
+            <Textarea
+              className="mt-1.5"
+              placeholder="e.g. Did not return after leave, no contact..."
+              value={abscondReason}
+              onChange={e => setAbscondReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleAbscond}
+              disabled={isAbsconding}
+              className="bg-orange-500 text-white hover:bg-orange-600"
+            >
+              {isAbsconding ? 'Processing...' : 'Mark as Absconded'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reactivate confirmation dialog */}
+      <AlertDialog open={!!reactivateId} onOpenChange={() => setReactivateId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-green-600" />
+              Reactivate Staff Member?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This staff member will be reactivated and included in future payroll runs.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleReactivate}
+              disabled={isReactivating}
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              {isReactivating ? 'Processing...' : 'Reactivate'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Batch Abscond dialog */}
+      <AlertDialog open={showBatchAbscondDialog} onOpenChange={v => { setShowBatchAbscondDialog(v); if (!v) setBatchAbscondReason(''); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <UserX className="h-5 w-5 text-orange-500" />
+              Abscond {selectedIds.length} Staff Member{selectedIds.length !== 1 ? 's' : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              All selected staff will be excluded from future payroll runs. You can reactivate them individually at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Label className="text-sm font-medium">Reason (optional)</Label>
+            <Textarea
+              className="mt-1.5"
+              placeholder="e.g. Did not return after leave..."
+              value={batchAbscondReason}
+              onChange={e => setBatchAbscondReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBatchAbscond}
+              disabled={isBatchAbsconding}
+              className="bg-orange-500 text-white hover:bg-orange-600"
+            >
+              {isBatchAbsconding ? 'Processing...' : `Abscond ${selectedIds.length}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Batch Delete dialog */}
+      <AlertDialog open={showBatchDeleteDialog} onOpenChange={setShowBatchDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Permanently Delete {selectedIds.length} Staff Member{selectedIds.length !== 1 ? 's' : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone. All selected staff records and their associated data will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBatchDelete}
+              disabled={isBatchDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isBatchDeleting ? 'Deleting...' : `Delete ${selectedIds.length}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Add Staff Dialog */}
       <Dialog open={showAddStaffDialog} onOpenChange={setShowAddStaffDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -672,7 +884,7 @@ const StaffDirectory = () => {
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input placeholder="Search staff..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
         </div>
-        <Select value={filterType} onValueChange={setFilterType}>
+        <Select value={filterType} onValueChange={v => { setFilterType(v); setSelectedIds([]); }}>
           <SelectTrigger>
             <SelectValue placeholder="Type" />
           </SelectTrigger>
@@ -683,11 +895,52 @@ const StaffDirectory = () => {
             ))}
           </SelectContent>
         </Select>
+        <Select value={filterAbsconded} onValueChange={(v: any) => { setFilterAbsconded(v); setSelectedIds([]); }}>
+          <SelectTrigger>
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active only</SelectItem>
+            <SelectItem value="absconded">Absconded only</SelectItem>
+            <SelectItem value="all">All staff</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold">Staff Management</h3>
+          {selectedIds.length > 0 && canWrite && (
+            <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5">
+              <span className="text-xs font-medium text-blue-700">{selectedIds.length} selected</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-orange-300 text-orange-600 hover:bg-orange-50"
+                onClick={() => setShowBatchAbscondDialog(true)}
+              >
+                <UserX className="h-3 w-3 mr-1" />
+                Abscond
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-7 text-xs"
+                onClick={() => setShowBatchDeleteDialog(true)}
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                Delete
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs text-gray-500"
+                onClick={() => setSelectedIds([])}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -695,6 +948,17 @@ const StaffDirectory = () => {
             <table className="w-full">
               <thead className="bg-accent">
                 <tr>
+                  {canWrite && (
+                    <th className="py-3 px-4 w-8">
+                      <Checkbox
+                        checked={
+                          filteredStaff.slice(startIdx, startIdx + itemsPerPage).length > 0 &&
+                          filteredStaff.slice(startIdx, startIdx + itemsPerPage).every((e: any) => selectedIds.includes(String(e.id)))
+                        }
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </th>
+                  )}
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Employee</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Clock Number</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Department</th>
@@ -704,12 +968,17 @@ const StaffDirectory = () => {
                 </tr>
               </thead>
               <tbody className="bg-white">
-                {filteredStaff.map((employee: any) => (
+                {filteredStaff.slice(startIdx, startIdx + itemsPerPage).map((employee: any) => (
                   <tr
                     key={employee.id}
-                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                    className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${selectedIds.includes(String(employee.id)) ? 'bg-blue-50 hover:bg-blue-100' : ''}`}
                     onClick={() => handleRowClick(employee)}
                   >
+                    {canWrite && (
+                      <td className="py-2 px-4 w-8" onClick={e => e.stopPropagation()}>
+                        <Checkbox checked={selectedIds.includes(String(employee.id))} onCheckedChange={() => toggleSelect(String(employee.id))} />
+                      </td>
+                    )}
                     <td className="py-2 px-4">
                       <div>
                         <p className="font-medium text-blue-600 text-xs">{employee.full_name}</p>
@@ -720,9 +989,16 @@ const StaffDirectory = () => {
                     <td className="py-2 px-4 text-xs">{employee.department || 'N/A'}</td>
                     <td className="py-2 px-4 text-xs">R{employee.hourly_rate}/hr</td>
                     <td className="py-2 px-4">
-                      <Badge variant="outline" className="text-xs">
-                        {employee.employee_type}
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="outline" className="text-xs w-fit">
+                          {employee.employee_type}
+                        </Badge>
+                        {employee.is_absconded && (
+                          <Badge className="text-xs w-fit bg-orange-100 text-orange-700 border-orange-300">
+                            Absconded
+                          </Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="py-2 px-4" onClick={e => e.stopPropagation()}>
                       <div className="flex gap-2">
@@ -731,6 +1007,27 @@ const StaffDirectory = () => {
                             <Button size="sm" variant="outline" className="text-xs" onClick={e => handleEditStaff(employee, e)}>
                               Edit
                             </Button>
+                            {!employee.is_absconded ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs border-orange-300 text-orange-600 hover:bg-orange-50"
+                                onClick={e => { e.stopPropagation(); setAbscondId(employee.id); }}
+                              >
+                                <UserX className="h-3 w-3 mr-1" />
+                                Abscond
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs border-green-400 text-green-700 hover:bg-green-50"
+                                onClick={e => { e.stopPropagation(); setReactivateId(employee.id); }}
+                              >
+                                <UserCheck className="h-3 w-3 mr-1" />
+                                Reactivate
+                              </Button>
+                            )}
                             <Button size="sm" variant="destructive" className="text-xs" onClick={e => confirmDelete(e, employee.id)}>
                               Delete
                             </Button>

@@ -270,13 +270,17 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
                   value={selectedPeriodId}
                   onValueChange={value => {
                     setSelectedPeriodId(value);
-                    const period = availablePeriods.find(p => p.id === value);
-                    if (period) {
-                      setPayPeriod({
-                        start_date: period.startDate,
-                        end_date: period.endDate,
-                        pay_date: period.payDate,
-                      });
+                    if (value === 'custom') {
+                      setPayPeriod({ start_date: '', end_date: '', pay_date: '' });
+                    } else {
+                      const period = availablePeriods.find(p => p.id === value);
+                      if (period) {
+                        setPayPeriod({
+                          start_date: period.startDate,
+                          end_date: period.endDate,
+                          pay_date: period.payDate,
+                        });
+                      }
                     }
                   }}
                 >
@@ -297,8 +301,49 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
                         </div>
                       </SelectItem>
                     ))}
+                    <SelectItem value="custom">Custom Period</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {selectedPeriodId === 'custom' && (
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Start Date</Label>
+                      <Input
+                        type="date"
+                        className="mt-1"
+                        value={payPeriod.start_date}
+                        onChange={e => {
+                          const start = e.target.value;
+                          const end = payPeriod.end_date;
+                          const payDate = end ? (() => {
+                            const d = new Date(end);
+                            const daysToFri = ((5 - d.getDay()) % 7 + 7) % 7 || 7;
+                            d.setDate(d.getDate() + daysToFri);
+                            return d.toISOString().split('T')[0];
+                          })() : '';
+                          setPayPeriod({ start_date: start, end_date: end, pay_date: payDate });
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">End Date</Label>
+                      <Input
+                        type="date"
+                        className="mt-1"
+                        value={payPeriod.end_date}
+                        onChange={e => {
+                          const end = e.target.value;
+                          const d = new Date(end);
+                          const daysToFri = ((5 - d.getDay()) % 7 + 7) % 7 || 7;
+                          d.setDate(d.getDate() + daysToFri);
+                          const payDate = d.toISOString().split('T')[0];
+                          setPayPeriod({ start_date: payPeriod.start_date, end_date: end, pay_date: payDate });
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Period Details */}
