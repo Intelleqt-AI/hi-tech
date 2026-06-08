@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import { Filter, Download, MessageSquare, ArrowUpDown } from 'lucide-react';
 import { useProductionData } from '@/hooks/useProductionData';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -26,7 +27,7 @@ const ProductionByMachine = () => {
       efficiency: record.efficiency_percentage?.toFixed(1) || '0',
       operator: 'Unknown Operator',
       shift: 'Day Shift',
-      date: new Date(record.recorded_at || '').toLocaleDateString()
+      date: fmtDate(record.recorded_at || '')
     }));
   }, [productionData]);
 

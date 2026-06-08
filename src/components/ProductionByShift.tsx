@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import { Filter, Download, MessageSquare, ArrowUpDown, Users, Target, Clock, Wrench, ChevronDown, ChevronRight } from 'lucide-react';
 import { useProductionData } from '@/hooks/useProductionData';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -84,7 +85,7 @@ const ProductionByShift = () => {
           acc[shiftKey] = {
             id: shiftKey,
             shift: record.shift || 'Unknown',
-            date: new Date(record.recorded_at || '').toLocaleDateString(),
+            date: fmtDate(record.recorded_at || ''),
             operators: new Set(),
             machines: new Set(),
             totalOutput: 0,

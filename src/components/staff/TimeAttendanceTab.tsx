@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import { cn, fmtDate, fmtDateTime, fmtDate, fmtDateTime } from '@/lib/utils';
 import { usePost } from '@/hooks/usePost';
 import {
   Pagination,
@@ -600,7 +600,7 @@ const TimeAttendanceTab = () => {
               {isSessionDownloading ? 'Downloading...' : 'Download Session'}
             </Button>
             <span className="text-xs text-gray-600">
-              {selectedDate ? new Date(selectedDate).toLocaleDateString() : new Date().toLocaleDateString()}
+              {selectedDate ? fmtDate(selectedDate) : new Date().toLocaleDateString()}
             </span>
           </div>
         </div>

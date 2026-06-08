@@ -1,4 +1,5 @@
 
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Bell, Moon, Sun, Sparkles, Home, CheckCheck } from 'lucide-react';
@@ -144,7 +145,7 @@ const TopBar = ({ currentPage = 'Dashboard' }: TopBarProps) => {
                         <p className="text-xs font-medium">{n.title}</p>
                         <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {new Date(n.created_at).toLocaleDateString()}
+                          {fmtDate(n.created_at)}
                         </p>
                       </div>
                     </div>

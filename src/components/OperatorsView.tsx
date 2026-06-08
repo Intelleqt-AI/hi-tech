@@ -1,4 +1,5 @@
 
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import React, { useState } from 'react';
 import { User, Clock, TrendingUp, ChevronDown, ChevronUp, Calendar, BarChart3 } from 'lucide-react';
 import { useProfiles } from '@/hooks/useSupabaseData';
@@ -241,7 +242,7 @@ const OperatorsView = () => {
                       {(record as any).user?.full_name || 'Unknown'}
                     </TableCell>
                     <TableCell>
-                      {new Date(record.date || '').toLocaleDateString()}
+                      {fmtDate(record.date || '')}
                     </TableCell>
                     <TableCell>
                       {record.check_in ? new Date(`2000-01-01 ${record.check_in}`).toLocaleTimeString() : '-'}

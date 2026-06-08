@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -491,7 +492,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                 <div>
                   <div className="text-sm text-gray-600">Period</div>
                   <div className="font-medium">
-                    {new Date(currentPeriod.startDate).toLocaleDateString()} - {new Date(currentPeriod.endDate).toLocaleDateString()}
+                    {fmtDate(currentPeriod.startDate)} - {fmtDate(currentPeriod.endDate)}
                   </div>
                 </div>
                 <div>
@@ -504,7 +505,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">Due Date</div>
-                  <div className="font-medium text-orange-600">{new Date(currentPeriod.payDate).toLocaleDateString()}</div>
+                  <div className="font-medium text-orange-600">{fmtDate(currentPeriod.payDate)}</div>
                 </div>
               </div>
 
@@ -617,7 +618,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                     <td className="py-2 px-4 text-xs">{payroll.total_employees || 0} staff</td>
                     <td className="py-2 px-4 text-xs font-medium">R{(payroll.total_net_pay || 0).toLocaleString()}</td>
                     <td className="py-2 px-4 text-xs">
-                      {payroll.payment_date ? new Date(payroll.payment_date).toLocaleDateString() : '-'}
+                      {payroll.payment_date ? fmtDate(payroll.payment_date) : '-'}
                     </td>
                     {/* Bank CSV */}
                     <td className="py-2 px-4">
@@ -766,7 +767,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                   <div className="flex justify-between"><span>Company:</span><span className="capitalize">{printBatch.factory}</span></div>
                   <div className="flex justify-between"><span>Staff Type:</span><span className="capitalize">{printBatch.staff_type || '—'}</span></div>
                   <div className="flex justify-between"><span>Period:</span><span>{printBatch.start_date} to {printBatch.end_date}</span></div>
-                  <div className="flex justify-between"><span>Pay Date:</span><span>{printBatch.payment_date ? new Date(printBatch.payment_date).toLocaleDateString() : '—'}</span></div>
+                  <div className="flex justify-between"><span>Pay Date:</span><span>{printBatch.payment_date ? fmtDate(printBatch.payment_date) : '—'}</span></div>
                   <div className="flex justify-between"><span>Employees:</span><span>{printBatch.total_employees || 0}</span></div>
                   <div className="flex justify-between"><span>Deductions:</span><span>{fmt(printBatch.total_deductions || 0)}</span></div>
                   <div className="flex justify-between"><span>Loans:</span><span>{fmt(printBatch.total_loans || 0)}</span></div>

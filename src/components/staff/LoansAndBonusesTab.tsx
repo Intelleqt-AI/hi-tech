@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -542,7 +543,7 @@ const LoansAndBonusesTab = () => {
                           </Tooltip>
                         </TooltipProvider>
                       </td>
-                      <td className="py-2 px-4 text-xs">{new Date(loan.start_date).toLocaleDateString()}</td>
+                      <td className="py-2 px-4 text-xs">{fmtDate(loan.start_date)}</td>
                       <td className="py-2 px-4 text-xs">R{parseFloat(loan.amount).toFixed(2)}</td>
                       <td className="py-2 px-4 text-xs">{loan.term_duration} {loan.term_type}</td>
                       <td className="py-2 px-4">
@@ -706,7 +707,7 @@ const LoansAndBonusesTab = () => {
                       <td className="py-2 px-4 text-xs font-medium">
                         {bonus.staff_member_name}
                       </td>
-                      <td className="py-2 px-4 text-xs">{new Date(bonus.created_at).toLocaleDateString()}</td>
+                      <td className="py-2 px-4 text-xs">{fmtDate(bonus.created_at)}</td>
                       <td className="py-2 px-4 text-xs">R{parseFloat(bonus.amount).toFixed(2)}</td>
                       <td className="py-2 px-4 text-xs">{bonus.reason}</td>
                       <td className="py-2 px-4">

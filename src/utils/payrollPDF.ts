@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 
 export interface PayrollSummaryData {
   period: {
@@ -42,9 +43,9 @@ export const generatePayrollPDF = (data: PayrollSummaryData): void => {
   // Period Information
   doc.setFontSize(10);
   doc.text(`Pay Period: ${data.period.name}`, 20, 45);
-  doc.text(`Period: ${new Date(data.period.startDate).toLocaleDateString()} - ${new Date(data.period.endDate).toLocaleDateString()}`, 20, 52);
-  doc.text(`Pay Date: ${new Date(data.period.payDate).toLocaleDateString()}`, 20, 59);
-  doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 20, 66);
+  doc.text(`Period: ${fmtDate(data.period.startDate)} - ${fmtDate(data.period.endDate)}`, 20, 52);
+  doc.text(`Pay Date: ${fmtDate(data.period.payDate)}`, 20, 59);
+  doc.text(`Generated: ${fmtDate(new Date())} ${new Date().toLocaleTimeString()}`, 20, 66);
   
   // Summary Totals
   doc.setFontSize(12);
@@ -153,8 +154,8 @@ export const generateIndividualPayslip = (employeeData: {
   
   // Period Info
   doc.text(`Pay Period: ${employeeData.period.name}`, 120, 45);
-  doc.text(`Period: ${new Date(employeeData.period.startDate).toLocaleDateString()} - ${new Date(employeeData.period.endDate).toLocaleDateString()}`, 120, 52);
-  doc.text(`Pay Date: ${new Date(employeeData.period.payDate).toLocaleDateString()}`, 120, 59);
+  doc.text(`Period: ${fmtDate(employeeData.period.startDate)} - ${fmtDate(employeeData.period.endDate)}`, 120, 52);
+  doc.text(`Pay Date: ${fmtDate(employeeData.period.payDate)}`, 120, 59);
   
   // Earnings
   let yPos = 85;
@@ -219,7 +220,7 @@ export const generateIndividualPayslip = (employeeData: {
   
   // Footer
   doc.setFontSize(8);
-  doc.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 20, 280);
+  doc.text(`Generated: ${fmtDate(new Date())} ${new Date().toLocaleTimeString()}`, 20, 280);
   
   // Download
   const fileName = `payslip-${employeeData.employee.employeeNumber}-${employeeData.period.name.replace(/\s+/g, '-').toLowerCase()}.pdf`;

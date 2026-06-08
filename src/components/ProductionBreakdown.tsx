@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import { Filter, Download, ChevronDown } from 'lucide-react';
 import { useProductionData } from '@/hooks/useProductionData';
 import { useStaffData } from '@/hooks/useUploadData';
@@ -13,13 +14,13 @@ const ProductionBreakdown = () => {
     ...(productionData || []).map(record => ({
       ...record,
       type: 'production',
-      date: new Date(record.recorded_at || '').toLocaleDateString(),
+      date: fmtDate(record.recorded_at || ''),
       shift: 'Day Shift'
     })),
     ...(staffData || []).map(record => ({
       ...record,
       type: 'staff',
-      date: new Date(record.date || '').toLocaleDateString(),
+      date: fmtDate(record.date || ''),
       shift: record.shift?.replace('_', ' ') || 'Unknown',
       machine_name: 'Staff Log',
       operator_name: record.employee_name

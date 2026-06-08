@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import { postData, downloadFile } from '@/lib/Api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -392,15 +393,15 @@ const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowPro
                 <div className="grid grid-cols-3 gap-3 p-4 bg-muted/30 rounded-lg border">
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground font-medium">Start Date</div>
-                    <div className="text-sm font-semibold mt-1">{new Date(payPeriod.start_date).toLocaleDateString()}</div>
+                    <div className="text-sm font-semibold mt-1">{fmtDate(payPeriod.start_date)}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground font-medium">End Date</div>
-                    <div className="text-sm font-semibold mt-1">{new Date(payPeriod.end_date).toLocaleDateString()}</div>
+                    <div className="text-sm font-semibold mt-1">{fmtDate(payPeriod.end_date)}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground font-medium">Pay Date</div>
-                    <div className="text-sm font-semibold mt-1">{new Date(payPeriod.pay_date).toLocaleDateString()}</div>
+                    <div className="text-sm font-semibold mt-1">{fmtDate(payPeriod.pay_date)}</div>
                   </div>
                 </div>
               )}
@@ -834,7 +835,7 @@ const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowPro
                 {approvedBatch?.approved_at && (
                   <div className="flex justify-between text-sm print:text-base border-b pb-2 mb-1">
                     <span>Approved on:</span>
-                    <span>{new Date(approvedBatch.approved_at).toLocaleString()}</span>
+                    <span>{fmtDateTime(approvedBatch.approved_at)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">

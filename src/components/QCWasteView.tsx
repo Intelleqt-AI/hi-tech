@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import { AlertTriangle, TrendingUp, Filter, Eye, X, Target } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -244,7 +245,7 @@ const QCWasteView = () => {
                       {issue.result === 'fail' ? 'Failed' : 'Passed'}
                     </span>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {new Date(issue.created_at).toLocaleDateString()}
+                      {fmtDate(issue.created_at)}
                     </p>
                   </div>
                 </div>

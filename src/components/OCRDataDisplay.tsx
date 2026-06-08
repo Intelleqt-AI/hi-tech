@@ -1,4 +1,5 @@
 
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -33,7 +34,7 @@ const OCRDataDisplay = () => {
                   <div>
                     <p className="font-medium">{log.staff_id || 'Unknown Staff'}</p>
                     <p className="text-sm text-gray-600">
-                      {log.hours}h - {log.shift} - {new Date(log.date).toLocaleDateString()}
+                      {log.hours}h - {log.shift} - {fmtDate(log.date)}
                     </p>
                     {log.notes && <p className="text-xs text-gray-500 mt-1">{log.notes}</p>}
                   </div>
@@ -66,7 +67,7 @@ const OCRDataDisplay = () => {
               {getRecentData(wasteData).map((waste: any) => (
                 <div key={waste.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div>
-                    <p className="font-medium">{new Date(waste.date).toLocaleDateString()}</p>
+                    <p className="font-medium">{fmtDate(waste.date)}</p>
                     <p className="text-sm text-gray-600">
                       {waste.shift} - {waste.waste_units || 'N/A'} units
                     </p>
@@ -105,7 +106,7 @@ const OCRDataDisplay = () => {
               {getRecentData(qcData).map((qc: any) => (
                 <div key={qc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div>
-                    <p className="font-medium">{new Date(qc.date).toLocaleDateString()}</p>
+                    <p className="font-medium">{fmtDate(qc.date)}</p>
                     <p className="text-sm text-gray-600">
                       {qc.shift} {qc.machine_id && `- Machine: ${qc.machine_id}`}
                     </p>
@@ -149,7 +150,7 @@ const OCRDataDisplay = () => {
                   <div>
                     <p className="font-medium">{check.machine || 'Unknown Machine'}</p>
                     <p className="text-sm text-gray-600">
-                      {check.shift} - {new Date(check.date).toLocaleDateString()}
+                      {check.shift} - {fmtDate(check.date)}
                     </p>
                     {check.note && <p className="text-xs text-gray-500 mt-1">{check.note}</p>}
                   </div>

@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import { Upload, FileText, Image, Users, Wrench, Flag, CheckCircle, Clock, XCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -494,7 +495,7 @@ const UploadInterface = ({ uploadedFiles, setUploadedFiles }: UploadInterfacePro
                                 {getReportTypeDisplay(record.report_type)}
                               </span>
                               <p className="text-xs text-gray-500">
-                                {new Date(record.uploaded_at).toLocaleDateString()}
+                                {fmtDate(record.uploaded_at)}
                               </p>
                             </div>
                           </div>

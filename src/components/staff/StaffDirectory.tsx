@@ -1,4 +1,5 @@
 import { useDelete } from '@/hooks/useDelete';
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import { usePost } from '@/hooks/usePost';
 import { usePatch } from '@/hooks/usePatch';
 import useFetch from '@/hooks/useFetch';
@@ -418,7 +419,7 @@ const StaffDirectory = () => {
 
   const formatDate = (dateString: any) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString();
+    return fmtDate(dateString);
   };
 
   const formatCurrency = (amount: any) => {
@@ -1008,7 +1009,7 @@ const StaffDirectory = () => {
                                   : <p className="text-muted-foreground">No reason recorded</p>
                                 }
                                 {employee.absconded_date && (
-                                  <p className="text-xs mt-1 text-muted-foreground">Since {new Date(employee.absconded_date).toLocaleDateString()}</p>
+                                  <p className="text-xs mt-1 text-muted-foreground">Since {fmtDate(employee.absconded_date)}</p>
                                 )}
                               </TooltipContent>
                             </Tooltip>
@@ -1229,7 +1230,7 @@ const StaffDirectory = () => {
                             <UserX className="h-4 w-4 text-orange-500" />
                             <p className="text-sm font-semibold text-orange-700">Absconded</p>
                             {emp.absconded_date && (
-                              <span className="text-xs text-orange-500 ml-auto">Since {new Date(emp.absconded_date).toLocaleDateString()}</span>
+                              <span className="text-xs text-orange-500 ml-auto">Since {fmtDate(emp.absconded_date)}</span>
                             )}
                           </div>
                           {emp.absconded_reason ? (
@@ -1238,7 +1239,7 @@ const StaffDirectory = () => {
                             <p className="text-xs text-orange-400 italic">No reason recorded</p>
                           )}
                           {emp.reactivated_date && (
-                            <p className="text-xs text-gray-500">Last reactivated: {new Date(emp.reactivated_date).toLocaleDateString()}</p>
+                            <p className="text-xs text-gray-500">Last reactivated: {fmtDate(emp.reactivated_date)}</p>
                           )}
                         </div>
                       ) : null; })()}

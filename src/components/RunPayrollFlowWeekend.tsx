@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fmtDate, fmtDateTime } from '@/lib/utils';
 import { postData, downloadFile } from '@/lib/Api';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -355,15 +356,15 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
                 <div className="grid grid-cols-3 gap-3 p-4 bg-muted/30 rounded-lg border">
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground font-medium">Start Date</div>
-                    <div className="text-sm font-semibold mt-1">{new Date(payPeriod.start_date).toLocaleDateString()}</div>
+                    <div className="text-sm font-semibold mt-1">{fmtDate(payPeriod.start_date)}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground font-medium">End Date</div>
-                    <div className="text-sm font-semibold mt-1">{new Date(payPeriod.end_date).toLocaleDateString()}</div>
+                    <div className="text-sm font-semibold mt-1">{fmtDate(payPeriod.end_date)}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground font-medium">Pay Date</div>
-                    <div className="text-sm font-semibold mt-1">{new Date(payPeriod.pay_date).toLocaleDateString()}</div>
+                    <div className="text-sm font-semibold mt-1">{fmtDate(payPeriod.pay_date)}</div>
                   </div>
                 </div>
               )}
