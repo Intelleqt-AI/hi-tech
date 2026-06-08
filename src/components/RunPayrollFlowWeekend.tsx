@@ -214,6 +214,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
 
           gross_pay: gross_pay,
           net_pay: net_pay,
+          phone_number: emp.phone_number || '',
         };
       });
       setPayRollInfo(mappedEmployees);
@@ -773,6 +774,14 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
               <h4 className="font-medium text-sm print:text-base mb-2">Payroll Summary</h4>
               <div className="space-y-1 text-sm print:text-base print:space-y-2">
                 <div className="flex justify-between">
+                  <span>Company:</span>
+                  <span className="capitalize">{selectedCompany}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Staff Type:</span>
+                  <span className="capitalize">{selectedStaffType}</span>
+                </div>
+                <div className="flex justify-between">
                   <span>Period:</span>
                   <span>
                     {payPeriod.start_date} to {payPeriod.end_date}
@@ -786,6 +795,26 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
                   <span>Employees:</span>
                   <span>{approvedBatch ? approvedBatch.total_employees : selectedEmployees.length}</span>
                 </div>
+                {!approvedBatch && (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Deductions:</span>
+                      <span>{formatCurrency(payRollInfo.reduce((sum, c) => sum + c.other_deductions, 0))}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Loans:</span>
+                      <span>{formatCurrency(payRollInfo.reduce((sum, c) => sum + c.loan_deductions, 0))}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Net Pay to Bank Account:</span>
+                      <span>{formatCurrency(payRollInfo.filter(e => !e.phone_number).reduce((sum, c) => sum + c.net_pay, 0))}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Net Pay to Cell Phone:</span>
+                      <span>{formatCurrency(payRollInfo.filter(e => !!e.phone_number).reduce((sum, c) => sum + c.net_pay, 0))}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between font-medium print:font-semibold print:text-lg print:border-t print:pt-1">
                   <span>Total Net Pay:</span>
                   <span className="text-green-600">
