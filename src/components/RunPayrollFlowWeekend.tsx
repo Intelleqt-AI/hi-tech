@@ -22,6 +22,9 @@ interface ApprovedBatchWeekend {
   end_date: string;
   total_net: number;
   total_employees: number;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  status?: string | null;
 }
 
 const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: () => void; onComplete: () => void; approvedBatch?: ApprovedBatchWeekend }) => {
@@ -771,8 +774,13 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-6">
             <div>
-              <h4 className="font-medium text-sm print:text-base mb-2">Payroll Summary</h4>
               <div className="space-y-1 text-sm print:text-base print:space-y-2">
+                {approvedBatch?.status && (
+                  <div className="flex justify-between text-sm print:text-base border-b pb-2 mb-1">
+                    <span>Status:</span>
+                    <span className="capitalize">{approvedBatch.status}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Company:</span>
                   <span className="capitalize">{selectedCompany}</span>

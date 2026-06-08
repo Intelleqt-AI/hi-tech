@@ -395,6 +395,9 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
           end_date: payroll.end_date,
           total_net: payroll.total_net_pay ?? payroll.total_net ?? 0,
           total_employees: payroll.total_employees ?? 0,
+          approved_by: payroll.approved_by ?? null,
+          approved_at: payroll.approved_at ?? null,
+          status: payroll.status ?? null,
         },
       },
     });
@@ -751,8 +754,14 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                 </div>
               </div>
               <div className="px-6 py-5">
-                <h4 className="font-medium text-base mb-3">Payroll Summary</h4>
                 <div className="space-y-2 text-base">
+                  <div className="flex justify-between border-b pb-2 mb-1"><span>Status:</span><span className="capitalize">{printBatch.status || '—'}</span></div>
+                  {printBatch.approved_by && (
+                    <div className="flex justify-between border-b pb-2 mb-1"><span>Approved by:</span><span>{printBatch.approved_by}</span></div>
+                  )}
+                  {printBatch.approved_at && (
+                    <div className="flex justify-between border-b pb-2 mb-1"><span>Approved on:</span><span>{new Date(printBatch.approved_at).toLocaleString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>
+                  )}
                   <div className="flex justify-between"><span>Company:</span><span className="capitalize">{printBatch.factory}</span></div>
                   <div className="flex justify-between"><span>Staff Type:</span><span className="capitalize">{printBatch.staff_type || '—'}</span></div>
                   <div className="flex justify-between"><span>Period:</span><span>{printBatch.start_date} to {printBatch.end_date}</span></div>

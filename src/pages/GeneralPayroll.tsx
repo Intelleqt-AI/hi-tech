@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import PayrollTab from '@/components/staff/PayrollTab';
 import RunPayrollFlow from '@/components/staff/RunPayrollFlow';
 
-type ApprovedBatch = { id: number; start_date: string; end_date: string; total_net: number; total_employees: number };
+type ApprovedBatch = { id: number; start_date: string; end_date: string; total_net: number; total_employees: number; approved_by?: string | null; approved_at?: string | null; status?: string | null };
 
 const GeneralPayroll = () => {
   const location = useLocation();

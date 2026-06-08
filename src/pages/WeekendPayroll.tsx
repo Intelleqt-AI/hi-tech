@@ -3,7 +3,7 @@ import WeekendPayrollTab from "@/components/staff/WeekendPayrollTab";
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
-type ApprovedBatch = { id: number; start_date: string; end_date: string; total_net: number; total_employees: number };
+type ApprovedBatch = { id: number; start_date: string; end_date: string; total_net: number; total_employees: number; approved_by?: string | null; approved_at?: string | null; status?: string | null };
 
 export default function WeekendPayroll() {
   const location = useLocation();

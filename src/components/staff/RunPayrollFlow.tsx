@@ -25,6 +25,9 @@ interface ApprovedBatch {
   end_date: string;
   total_net: number;
   total_employees: number;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  status?: string | null;
 }
 
 interface RunPayrollFlowProps {
@@ -815,8 +818,25 @@ const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowPro
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-6">
             <div>
-              <h4 className="font-medium text-sm print:text-base mb-2">Payroll Summary</h4>
               <div className="space-y-1 text-sm print:text-base print:space-y-2">
+                {approvedBatch?.status && (
+                  <div className="flex justify-between text-sm print:text-base border-b pb-2 mb-1">
+                    <span>Status:</span>
+                    <span className="capitalize">{approvedBatch.status}</span>
+                  </div>
+                )}
+                {approvedBatch?.approved_by && (
+                  <div className="flex justify-between text-sm print:text-base border-b pb-2 mb-1">
+                    <span>Approved by:</span>
+                    <span>{approvedBatch.approved_by}</span>
+                  </div>
+                )}
+                {approvedBatch?.approved_at && (
+                  <div className="flex justify-between text-sm print:text-base border-b pb-2 mb-1">
+                    <span>Approved on:</span>
+                    <span>{new Date(approvedBatch.approved_at).toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Company:</span>
                   <span className="capitalize">{selectedCompany}</span>
