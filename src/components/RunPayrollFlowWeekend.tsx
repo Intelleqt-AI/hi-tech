@@ -935,7 +935,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
     try {
       await downloadFile(
         `staff/payroll-batches/${payrollId}/export-cell-csv/`,
-        `Cell_Payments_${payPeriod.start_date}_to_${payPeriod.end_date}.xls`,
+        `Cell_Payments_${payPeriod.start_date}_to_${payPeriod.end_date}.csv`,
       );
     } catch (error) {
       console.error('Error downloading cell phone CSV:', error);

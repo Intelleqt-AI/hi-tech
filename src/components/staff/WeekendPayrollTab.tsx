@@ -378,7 +378,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     try {
       await downloadFile(
         `staff/payroll-batches/${payroll.id}/export-cell-csv/`,
-        `Cell_Payments_${payroll.start_date}_to_${payroll.end_date}.xls`,
+        `Cell_Payments_${payroll.start_date}_to_${payroll.end_date}.csv`,
       );
       toast({ title: 'Success', description: 'Cell phone CSV downloaded' });
     } catch (error) {
