@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare } from 'lucide-react';
+import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,7 @@ import useFetch from '@/hooks/useFetch';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePost } from '@/hooks/usePost';
 import { usePut } from '@/hooks/usePut';
+import { fetchData, postData, deleteData } from '@/lib/Api';
 import CommentsModal from '@/components/CommentsModal';
 
 interface Loan {
@@ -67,6 +68,14 @@ interface Bonus {
   approved_by?: string;
 }
 
+interface BonusDoc {
+  id: number;
+  file_name: string;
+  file_url: string;
+  uploaded_by: string;
+  uploaded_at: string;
+}
+
 const LoansAndBonusesTab = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -105,6 +114,40 @@ const LoansAndBonusesTab = () => {
 
   const removeLoanDocument = (index: number) => {
     setLoanDocuments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const [bonusDocuments, setBonusDocuments] = useState<BonusDoc[]>([]);
+  const [bonusDocUploading, setBonusDocUploading] = useState(false);
+
+  const handleBonusDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !editingBonus) return;
+    const files = Array.from(e.target.files);
+    setBonusDocUploading(true);
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const doc = await postData({
+          url: `staff/bonuses/${editingBonus.id}/upload-document/`,
+          data: formData,
+        });
+        setBonusDocuments(prev => [...prev, doc]);
+      } catch {
+        toast({ title: 'Upload failed', description: file.name, variant: 'destructive' });
+      }
+    }
+    setBonusDocUploading(false);
+    e.target.value = '';
+  };
+
+  const handleBonusDocDelete = async (doc: BonusDoc) => {
+    if (!editingBonus) return;
+    try {
+      await deleteData({ url: `staff/bonuses/${editingBonus.id}/documents/${doc.id}/`, data: undefined });
+      setBonusDocuments(prev => prev.filter(d => d.id !== doc.id));
+    } catch {
+      toast({ title: 'Delete failed', variant: 'destructive' });
+    }
   };
 
   const [bonusForm, setBonusForm] = useState({
@@ -253,7 +296,7 @@ const LoansAndBonusesTab = () => {
     setShowLoanDialog(true);
   };
 
-  const editBonus = (bonus: Bonus) => {
+  const editBonus = async (bonus: Bonus) => {
     setEditingBonus(bonus);
     setBonusForm({
       employee_id: bonus.staff_member.toString(),
@@ -262,7 +305,14 @@ const LoansAndBonusesTab = () => {
       payroll_period_id: '',
       status: bonus.status
     });
+    setBonusDocuments([]);
     setShowBonusDialog(true);
+    try {
+      const docs = await fetchData(`staff/bonuses/${bonus.id}/documents/`);
+      setBonusDocuments(docs || []);
+    } catch {
+      // documents load failure is non-fatal
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -607,7 +657,7 @@ const LoansAndBonusesTab = () => {
                 </Button>
               </DialogTrigger>
               )}
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingBonus ? 'Edit Bonus' : 'Add New Bonus'}</DialogTitle>
                 </DialogHeader>
@@ -672,13 +722,65 @@ const LoansAndBonusesTab = () => {
                     </Select>
                   </div>
 
+                  {editingBonus && (
+                    <div>
+                      <Label>Documents</Label>
+                      <div
+                        className="mt-1 border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                        onClick={() => document.getElementById('bonus-doc-upload')?.click()}
+                      >
+                        {bonusDocUploading ? (
+                          <Loader2 className="mx-auto h-6 w-6 text-gray-400 mb-1 animate-spin" />
+                        ) : (
+                          <Paperclip className="mx-auto h-6 w-6 text-gray-400 mb-1" />
+                        )}
+                        <p className="text-sm text-gray-500">{bonusDocUploading ? 'Uploading…' : 'Click to attach documents'}</p>
+                        <p className="text-xs text-gray-400">PDF, PNG, JPG, DOC up to 10MB each</p>
+                        <input
+                          id="bonus-doc-upload"
+                          type="file"
+                          multiple
+                          accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                          className="hidden"
+                          onChange={handleBonusDocUpload}
+                          disabled={bonusDocUploading}
+                        />
+                      </div>
+                      {bonusDocuments.length > 0 && (
+                        <ul className="mt-2 space-y-1">
+                          {bonusDocuments.map((doc) => (
+                            <li key={doc.id} className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileText className="h-4 w-4 text-gray-400 shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="truncate text-gray-700 font-medium">{doc.file_name}</p>
+                                  <p className="text-xs text-gray-400">{doc.uploaded_by} · {fmtDate(doc.uploaded_at)}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 ml-2 shrink-0">
+                                <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                                  <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                    <Download className="h-3.5 w-3.5" />
+                                  </Button>
+                                </a>
+                                <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-red-500" onClick={() => handleBonusDocDelete(doc)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     {canWrite && editingBonus?.status !== 'approved' && (
                       <Button type="submit" className="flex-1">
                         {editingBonus ? 'Update Bonus' : 'Add Bonus'}
                       </Button>
                     )}
-                    <Button type="button" variant="outline" onClick={() => setShowBonusDialog(false)}>
+                    <Button type="button" variant="outline" onClick={() => { setShowBonusDialog(false); setBonusDocuments([]); }}>
                       Cancel
                     </Button>
                   </div>
