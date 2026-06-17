@@ -50,6 +50,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
   const [payrollId, setPayrollId] = useState<string>(null);
   const [finalizing, setFinalizing] = useState(false);
   const [finalized, setFinalized] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ synced: number; skipped: number; errors: string[] } | null>(null);
 
   const { data: wageReportData, isLoading: wageReportLoading } = useFetch(
     `/atg/attendance/staff-weekend-wage-report/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod?.start_date}&end_date=${payPeriod?.end_date}`,
@@ -249,8 +250,9 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
     if (!approvedBatch) return;
     setFinalizing(true);
     try {
-      await postData({ url: 'atg/attendance/process-payroll-batch/', data: { batch_id: approvedBatch.id } });
+      const data = await postData({ url: 'atg/attendance/process-payroll-batch/', data: { batch_id: approvedBatch.id } });
       setFinalized(true);
+      setSyncResult(data.simplepay_sync ?? null);
       toast({ title: 'Payroll Finalized', description: 'Payroll processed and completed.' });
     } catch {
       toast({ title: 'Error', description: 'Could not finalize. Try again.', variant: 'destructive' });
@@ -840,9 +842,21 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
           {approvedBatch && (
             <>
               {finalized ? (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
-                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>Payroll finalized and completed. Downloads ready below.</span>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+                    <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                    <span>Payroll finalized. {syncResult?.synced ?? 0} employee(s) synced to SimplePay.</span>
+                  </div>
+                  {syncResult && syncResult.skipped > 0 && (
+                    <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm space-y-1">
+                      <p className="font-medium">{syncResult.skipped} employee(s) not synced to SimplePay:</p>
+                      <ul className="list-disc list-inside space-y-0.5 text-xs">
+                        {syncResult.errors.filter(e => !e.includes('No matching staff')).map((e, i) => (
+                          <li key={i}>{e}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-sm">
