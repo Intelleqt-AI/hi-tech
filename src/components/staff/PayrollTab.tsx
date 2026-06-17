@@ -643,9 +643,11 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                     </td>
                     {/* Accounting Info PDF */}
                     <td className="py-2 px-4">
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-purple-600" title="Accounting Info PDF" onClick={() => handleDownloadAccounting(payroll)}>
-                        <Download className="h-3 w-3" />
-                      </Button>
+                      {payroll.factory !== 'YOUTH_WORK' && (
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-purple-600" title="Accounting Info PDF" onClick={() => handleDownloadAccounting(payroll)}>
+                          <Download className="h-3 w-3" />
+                        </Button>
+                      )}
                     </td>
                     <td className="py-2 px-4">
                       <button onClick={() => navigate(`/staff/payroll-batches/${payroll.id}/slips`)}>
