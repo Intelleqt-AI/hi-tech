@@ -593,7 +593,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
               <thead className="bg-accent">
                 <tr>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Period</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Type</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Company</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Employees</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Total Cost</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Pay Date</th>
@@ -619,10 +619,12 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                         </span>
                       </span>
                     </td>
-                    <td className="py-2 px-4">
-                      <Badge variant="outline" className="text-xs capitalize">
-                        {payroll.period_type}
-                      </Badge>
+                    <td className="py-2 px-4 text-xs">
+                      {payroll.factory === 'hitec' ? 'Hitec' :
+                       payroll.factory === 'RANDM' ? 'Rob & Martin' :
+                       payroll.factory === 'CASUALS' ? 'Casuals' :
+                       payroll.factory === 'YOUTH_WORK' ? 'Youth @ Work' :
+                       payroll.factory || '-'}
                     </td>
                     <td className="py-2 px-4 text-xs">{payroll.total_employees || 0} staff</td>
                     <td className="py-2 px-4 text-xs font-medium">R{(payroll.total_net_pay || 0).toLocaleString()}</td>
