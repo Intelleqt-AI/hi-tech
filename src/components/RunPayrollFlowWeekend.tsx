@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fmtDate, fmtDateTime } from '@/lib/utils';
-import { postData, downloadFile } from '@/lib/Api';
+import { postData, downloadFile, fetchData } from '@/lib/Api';
+import { generateAccountingPDF } from '@/lib/accountingPDF';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,6 +52,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
   const [finalizing, setFinalizing] = useState(false);
   const [finalized, setFinalized] = useState(false);
   const [syncResult, setSyncResult] = useState<{ synced: number; skipped: number; errors: string[] } | null>(null);
+  const [accountingLoading, setAccountingLoading] = useState(false);
 
   const { data: wageReportData, isLoading: wageReportLoading } = useFetch(
     `/atg/attendance/staff-weekend-wage-report/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod?.start_date}&end_date=${payPeriod?.end_date}`,
@@ -258,6 +260,19 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
       toast({ title: 'Error', description: 'Could not finalize. Try again.', variant: 'destructive' });
     } finally {
       setFinalizing(false);
+    }
+  };
+
+  const handleDownloadAccounting = async () => {
+    if (!approvedBatch) return;
+    setAccountingLoading(true);
+    try {
+      const data = await fetchData(`atg/attendance/payroll-accounting-info/?batch_id=${approvedBatch.id}`);
+      generateAccountingPDF(data);
+    } catch {
+      toast({ title: 'Error', description: 'Could not fetch accounting info from SimplePay.', variant: 'destructive' });
+    } finally {
+      setAccountingLoading(false);
     }
   };
 

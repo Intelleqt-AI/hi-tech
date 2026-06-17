@@ -13,7 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { generatePayrollPDF, PayrollSummaryData } from '@/utils/payrollPDF';
-import { fetchEntries, downloadFile, deleteData } from '@/lib/Api';
+import { fetchEntries, downloadFile, deleteData, fetchData } from '@/lib/Api';
+import { generateAccountingPDF } from '@/lib/accountingPDF';
 import { useQuery } from '@tanstack/react-query';
 import useFetch from '@/hooks/useFetch';
 import CommentsModal from '@/components/CommentsModal';
@@ -387,6 +388,15 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     }
   };
 
+  const handleDownloadAccounting = async (payroll: any) => {
+    try {
+      const data = await fetchData(`atg/attendance/payroll-accounting-info/?batch_id=${payroll.id}`);
+      generateAccountingPDF(data);
+    } catch {
+      toast({ title: 'Error', description: 'Could not fetch accounting info from SimplePay.', variant: 'destructive' });
+    }
+  };
+
   const handleProcessBatch = (payroll: any) => {
     navigate('/payroll/general', {
       state: {
@@ -589,6 +599,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Pay Date</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Bank CSV</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Cell CSV</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Accounting</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">View</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Print</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Status</th>
@@ -629,6 +640,16 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-orange-500" title="Cell Phone CSV" onClick={() => handleDownloadCellCSV(payroll)}>
                         <Download className="h-3 w-3" />
                       </Button>
+                    </td>
+                    {/* Accounting Info PDF */}
+                    <td className="py-2 px-4">
+                      {payroll.status === 'completed' ? (
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-purple-600" title="Accounting Info PDF" onClick={() => handleDownloadAccounting(payroll)}>
+                          <Download className="h-3 w-3" />
+                        </Button>
+                      ) : (
+                        <span className="h-6 w-6 inline-block" />
+                      )}
                     </td>
                     <td className="py-2 px-4">
                       <button onClick={() => navigate(`/staff/payroll-batches/${payroll.id}/slips`)}>
