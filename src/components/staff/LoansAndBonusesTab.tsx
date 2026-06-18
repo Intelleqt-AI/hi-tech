@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2 } from 'lucide-react';
+import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2, FileDown } from 'lucide-react';
+import { generateBonusPDF } from '@/lib/bonusPDF';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -57,6 +58,7 @@ interface Bonus {
   id: number;
   staff_member: number;
   staff_member_name: string;
+  clock_number?: string;
   amount: string;
   reason?: string;
   status: string;
@@ -66,6 +68,7 @@ interface Bonus {
   comment_count?: number;
   approved_at?: string;
   approved_by?: string;
+  added_by?: string;
 }
 
 interface BonusDoc {
@@ -832,6 +835,17 @@ const LoansAndBonusesTab = () => {
                           <Button size="sm" variant="outline" onClick={() => editBonus(bonus)} className="text-xs">
                             {canWrite && bonus.status !== 'approved' ? <Edit className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                           </Button>
+                          {bonus.status === 'approved' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                              title="Download Summary"
+                              onClick={() => generateBonusPDF(bonus)}
+                            >
+                              <FileDown className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           {bonus.approval_id && (
                             <Button
                               size="sm"
