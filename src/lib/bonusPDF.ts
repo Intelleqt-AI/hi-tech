@@ -77,7 +77,7 @@ export function generateBonusPDF(bonus: BonusSummaryData): void {
   row('Clock Number:', bonus.clock_number || '-');
   row('Bonus ID:', `#${bonus.id}`);
   row('Added By:', bonus.added_by || '-');
-  row('Amount:', `R ${parseFloat(bonus.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+  row('Amount:', `R ${parseFloat(bonus.amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}`);
   row('Date Awarded:', fmtDate(bonus.created_at));
   row('Status:', capitalize(bonus.status));
 

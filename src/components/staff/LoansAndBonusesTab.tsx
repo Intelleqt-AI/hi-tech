@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2, FileDown } from 'lucide-react';
 import { generateBonusPDF } from '@/lib/bonusPDF';
+import { generateLoanPDF } from '@/lib/loanPDF';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -26,12 +27,17 @@ interface Loan {
   id: number;
   staff_member: number;
   staff_member_name: string;
+  clock_number?: string;
+  bank_account_number?: string;
+  bank_branch_code?: string;
   loan_type: string;
   amount: string;
+  interest_rate?: string;
+  total_repayment?: number;
+  repayment_amount?: number;
   term_type: string;
   term_duration: number;
   start_date: string;
-  interest_rate?: string;
   notes?: string;
   approval_status?: string;
   approval_id?: number;
@@ -40,6 +46,8 @@ interface Loan {
   comment_count?: number;
   approved_at?: string;
   approved_by?: string;
+  added_by?: string;
+  created_at?: string;
 }
 
 interface StaffMember {
@@ -283,6 +291,28 @@ const LoansAndBonusesTab = () => {
   };
 
 
+
+  const handleDownloadLoanCSV = (loan: Loan) => {
+    const principal = parseFloat(loan.amount);
+    const rows = [
+      ['Name', 'Account Number', 'Branch Code', 'Amount', 'Reference'],
+      [
+        loan.staff_member_name,
+        loan.bank_account_number || '',
+        loan.bank_branch_code || '',
+        principal.toFixed(2),
+        `Loan #${loan.id} - ${loan.loan_type}`,
+      ],
+    ];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `loan-bank-${loan.id}-${loan.staff_member_name.replace(/\s+/g, '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const editLoan = (loan: Loan) => {
     setEditingLoan(loan);
@@ -569,6 +599,8 @@ const LoansAndBonusesTab = () => {
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Date Issued</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Amount</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Term</th>
+                    <th className="text-center py-3 px-4 text-xs font-medium text-foreground">Summary</th>
+                    <th className="text-center py-3 px-4 text-xs font-medium text-foreground">CSV</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Actions</th>
                   </tr>
                 </thead>
@@ -599,6 +631,32 @@ const LoansAndBonusesTab = () => {
                       <td className="py-2 px-4 text-xs">{fmtDate(loan.start_date)}</td>
                       <td className="py-2 px-4 text-xs">R{parseFloat(loan.amount).toFixed(2)}</td>
                       <td className="py-2 px-4 text-xs">{loan.term_duration} {loan.term_type}</td>
+                      <td className="py-2 px-4 text-center">
+                        {loan.approval_status === 'approved' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                            title="Download Summary PDF"
+                            onClick={() => generateLoanPDF(loan)}
+                          >
+                            <FileDown className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </td>
+                      <td className="py-2 px-4 text-center">
+                        {loan.approval_status === 'approved' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                            title="Download Bank CSV"
+                            onClick={() => handleDownloadLoanCSV(loan)}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </td>
                       <td className="py-2 px-4">
                         <div className="flex items-center gap-1">
                           <Button size="sm" variant="outline" onClick={() => editLoan(loan)} className="text-xs">
@@ -630,7 +688,7 @@ const LoansAndBonusesTab = () => {
                   ))}
                   {loans.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="text-center text-muted-foreground py-4 text-xs">
+                      <td colSpan={9} className="text-center text-muted-foreground py-4 text-xs">
                         No loans found
                       </td>
                     </tr>
