@@ -94,6 +94,7 @@ const LoansAndBonusesTab = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const canWrite = user?.role !== 'viewer';
+  const isAdmin = user?.role === 'admin';
 
   const { data: staffMembers } = useFetch<StaffMember[]>('staff/members/');
   const { data: loansData, isLoading: loansLoading, refetch: refetchLoans } = useFetch<Loan[]>('staff/loans/');
@@ -310,6 +311,36 @@ const LoansAndBonusesTab = () => {
     a.download = `loan-bank-${loan.id}-${loan.staff_member_name.replace(/\s+/g, '-')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteLoan = async (loan: Loan) => {
+    if (!window.confirm(`Delete loan #${loan.id} for ${loan.staff_member_name}? This cannot be undone.`)) return;
+    try {
+      await deleteData({ url: `staff/loans/${loan.id}/`, data: undefined });
+      toast({ title: 'Loan deleted' });
+      refetchLoans();
+    } catch (err: any) {
+      toast({
+        title: 'Delete failed',
+        description: err?.response?.data?.detail || 'Could not delete loan.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteBonus = async (bonus: Bonus) => {
+    if (!window.confirm(`Delete bonus #${bonus.id} for ${bonus.staff_member_name}? This cannot be undone.`)) return;
+    try {
+      await deleteData({ url: `staff/bonuses/${bonus.id}/`, data: undefined });
+      toast({ title: 'Bonus deleted' });
+      refetchBonuses();
+    } catch (err: any) {
+      toast({
+        title: 'Delete failed',
+        description: err?.response?.data?.detail || 'Could not delete bonus.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const editLoan = (loan: Loan) => {
@@ -711,6 +742,17 @@ const LoansAndBonusesTab = () => {
                               )}
                             </Button>
                           )}
+                          {isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600"
+                              title="Delete loan"
+                              onClick={() => handleDeleteLoan(loan)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -982,6 +1024,17 @@ const LoansAndBonusesTab = () => {
                                   {bonus.comment_count}
                                 </span>
                               )}
+                            </Button>
+                          )}
+                          {isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600"
+                              title="Delete bonus"
+                              onClick={() => handleDeleteBonus(bonus)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           )}
                         </div>
