@@ -30,6 +30,9 @@ interface Loan {
   id: number;
   staff_member: number;
   staff_member_name: string;
+  staff_first_name?: string;
+  staff_last_name?: string;
+  factory?: string;
   clock_number?: string;
   bank_account_number?: string;
   bank_branch_code?: string;
@@ -292,15 +295,39 @@ const LoansAndBonusesTab = () => {
 
 
   const handleDownloadLoanCSV = (loan: Loan) => {
-    const principal = parseFloat(loan.amount);
+    // Company (DR) bank account — only the name changes per factory
+    const DR_ACCOUNT_NUMBER = '201930447';
+    const DR_BRANCH_NUMBER = '051001';
+    const CR_STATEMENT_REFERENCE = 'HITEC PACKAGING';
+    const drAccountName = loan.factory === 'RANDM' ? 'ROB AND MARTIN' : 'HITEC PACKAGING';
+
+    // Employee name as "LASTNAME, FIRSTNAME"
+    const crAccountName = (loan.staff_last_name && loan.staff_first_name)
+      ? `${loan.staff_last_name}, ${loan.staff_first_name}`
+      : loan.staff_member_name;
+
+    // Total amount with interest, comma decimal (SA format)
+    const total = loan.total_repayment ?? parseFloat(loan.amount);
+    const amountStr = total.toFixed(2).replace('.', ',');
+
+    // Date as YYYYMMDD from loan start date
+    const dateStr = (loan.start_date || '').replace(/-/g, '');
+
     const rows = [
-      ['Name', 'Account Number', 'Branch Code', 'Amount', 'Reference'],
+      ['CR ACCOUNT NAME', 'CR ACCOUNT NUMBER', 'CR BRANCH NUMBER', 'CR STATEMENT REFERENCE',
+       'DR ACCOUNT NAME', 'DR ACCOUNT NUMBER', 'DR BRANCH NUMBER', 'DR STATEMENT REFERENCE',
+       'DATE', 'AMOUNT'],
       [
-        loan.staff_member_name,
+        crAccountName,
         loan.bank_account_number || '',
         loan.bank_branch_code || '',
-        principal.toFixed(2),
-        `Loan #${loan.id} - ${loan.loan_type}`,
+        CR_STATEMENT_REFERENCE,
+        drAccountName,
+        DR_ACCOUNT_NUMBER,
+        DR_BRANCH_NUMBER,
+        crAccountName,
+        dateStr,
+        amountStr,
       ],
     ];
     const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
