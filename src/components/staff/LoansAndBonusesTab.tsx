@@ -10,7 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2, FileDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
+import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2, FileDown, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { generateBonusPDF } from '@/lib/bonusPDF';
 import { generateLoanPDF } from '@/lib/loanPDF';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -103,6 +106,8 @@ const LoansAndBonusesTab = () => {
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
   const [editingBonus, setEditingBonus] = useState<Bonus | null>(null);
   const [commentsModal, setCommentsModal] = useState<{ approvalId: number; itemLabel: string; itemStatus: string } | null>(null);
+  const [loanStaffPickerOpen, setLoanStaffPickerOpen] = useState(false);
+  const [bonusStaffPickerOpen, setBonusStaffPickerOpen] = useState(false);
 
   const [loanForm, setLoanForm] = useState({
     employee_id: '',
@@ -412,21 +417,52 @@ const LoansAndBonusesTab = () => {
                 <form onSubmit={handleLoanSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="employee_id">Staff Member</Label>
-                    <Select
-                      value={loanForm.employee_id}
-                      onValueChange={(value) => setLoanForm(prev => ({ ...prev, employee_id: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select staff member" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {staffMembers?.map((staff) => (
-                          <SelectItem key={staff.id} value={staff.id.toString()}>
-                            {staff.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={loanStaffPickerOpen} onOpenChange={setLoanStaffPickerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={loanStaffPickerOpen}
+                          className="w-full justify-between font-normal"
+                        >
+                          <span className={cn(!loanForm.employee_id && "text-muted-foreground/50")}>
+                            {loanForm.employee_id
+                              ? staffMembers?.find((s) => s.id.toString() === loanForm.employee_id)?.full_name
+                              : "Select staff member"}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search staff member..." />
+                          <CommandList>
+                            <CommandEmpty>No staff member found.</CommandEmpty>
+                            <CommandGroup>
+                              {staffMembers?.map((staff) => (
+                                <CommandItem
+                                  key={staff.id}
+                                  value={staff.full_name}
+                                  onSelect={() => {
+                                    setLoanForm(prev => ({ ...prev, employee_id: staff.id.toString() }));
+                                    setLoanStaffPickerOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      loanForm.employee_id === staff.id.toString() ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {staff.full_name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   <div>
@@ -718,21 +754,52 @@ const LoansAndBonusesTab = () => {
                 <form onSubmit={handleBonusSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="employee_id">Staff Member</Label>
-                    <Select
-                      value={bonusForm.employee_id}
-                      onValueChange={(value) => setBonusForm(prev => ({ ...prev, employee_id: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select staff member" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {staffMembers?.map((staff) => (
-                          <SelectItem key={staff.id} value={staff.id.toString()}>
-                            {staff.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={bonusStaffPickerOpen} onOpenChange={setBonusStaffPickerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={bonusStaffPickerOpen}
+                          className="w-full justify-between font-normal"
+                        >
+                          <span className={cn(!bonusForm.employee_id && "text-muted-foreground/50")}>
+                            {bonusForm.employee_id
+                              ? staffMembers?.find((s) => s.id.toString() === bonusForm.employee_id)?.full_name
+                              : "Select staff member"}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search staff member..." />
+                          <CommandList>
+                            <CommandEmpty>No staff member found.</CommandEmpty>
+                            <CommandGroup>
+                              {staffMembers?.map((staff) => (
+                                <CommandItem
+                                  key={staff.id}
+                                  value={staff.full_name}
+                                  onSelect={() => {
+                                    setBonusForm(prev => ({ ...prev, employee_id: staff.id.toString() }));
+                                    setBonusStaffPickerOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      bonusForm.employee_id === staff.id.toString() ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {staff.full_name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   <div>
