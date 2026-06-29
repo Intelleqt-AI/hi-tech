@@ -417,7 +417,7 @@ const LoansAndBonusesTab = () => {
                 <form onSubmit={handleLoanSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="employee_id">Staff Member</Label>
-                    <Popover open={loanStaffPickerOpen} onOpenChange={setLoanStaffPickerOpen}>
+                    <Popover open={loanStaffPickerOpen} onOpenChange={setLoanStaffPickerOpen} modal={true}>
                       <PopoverTrigger asChild>
                         <Button
                           type="button"
@@ -754,7 +754,7 @@ const LoansAndBonusesTab = () => {
                 <form onSubmit={handleBonusSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="employee_id">Staff Member</Label>
-                    <Popover open={bonusStaffPickerOpen} onOpenChange={setBonusStaffPickerOpen}>
+                    <Popover open={bonusStaffPickerOpen} onOpenChange={setBonusStaffPickerOpen} modal={true}>
                       <PopoverTrigger asChild>
                         <Button
                           type="button"
