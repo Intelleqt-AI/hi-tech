@@ -173,18 +173,11 @@ const LoansAndBonusesTab = () => {
     // Initialization logic if needed
   }, []);
 
-  const calculateInstallment = (amount: number, interestRate: number, duration: number, termType: string) => {
-    if (interestRate === 0) {
-      return amount / duration;
-    }
-
-    // Adjust rate and periods based on term type
-    const periodsPerYear = termType === 'fortnightly' ? 26 : 12;
-    const periodicRate = interestRate / 100 / periodsPerYear;
-
-    const payment = (amount * periodicRate * Math.pow(1 + periodicRate, duration)) /
-      (Math.pow(1 + periodicRate, duration) - 1);
-    return payment;
+  const calculateInstallment = (amount: number, interestRate: number, duration: number, _termType: string) => {
+    if (!duration) return 0;
+    // Flat interest: total = principal + (principal * rate%), split evenly over term
+    const totalRepayment = amount + (amount * interestRate) / 100;
+    return totalRepayment / duration;
   };
 
   const handleLoanSubmit = async (e: React.FormEvent) => {
