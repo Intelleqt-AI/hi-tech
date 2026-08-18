@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
-import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2, FileDown, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2, FileDown, Check, ChevronsUpDown, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateBonusPDF } from '@/lib/bonusPDF';
 import { generateLoanPDF } from '@/lib/loanPDF';
@@ -23,7 +23,7 @@ import useFetch from '@/hooks/useFetch';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePost } from '@/hooks/usePost';
 import { usePut } from '@/hooks/usePut';
-import { fetchData, postData, deleteData } from '@/lib/Api';
+import { fetchData, postData, deleteData, downloadFile } from '@/lib/Api';
 import CommentsModal from '@/components/CommentsModal';
 
 interface Loan {
@@ -338,6 +338,24 @@ const LoansAndBonusesTab = () => {
     a.download = `loan-bank-${loan.id}-${loan.staff_member_name.replace(/\s+/g, '-')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Same ten columns and values as the CSV above, but built server-side with xlwt
+  // so the file is a real Microsoft Excel 97-2003 Worksheet, matching the general
+  // payroll export the bank accepts.
+  const handleDownloadLoanXLS = async (loan: Loan) => {
+    try {
+      await downloadFile(
+        `staff/loans/${loan.id}/export-xls/`,
+        `loan-bank-${loan.id}-${loan.staff_member_name.replace(/\s+/g, '-')}.xls`,
+      );
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Could not generate the Excel file. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteLoan = async (loan: Loan) => {
@@ -688,6 +706,7 @@ const LoansAndBonusesTab = () => {
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Term</th>
                     <th className="text-center py-3 px-4 text-xs font-medium text-foreground">Summary</th>
                     <th className="text-center py-3 px-4 text-xs font-medium text-foreground">CSV</th>
+                    <th className="text-center py-3 px-4 text-xs font-medium text-foreground">Excel</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Actions</th>
                   </tr>
                 </thead>
@@ -744,6 +763,19 @@ const LoansAndBonusesTab = () => {
                           </Button>
                         )}
                       </td>
+                      <td className="py-2 px-4 text-center">
+                        {loan.approval_status === 'approved' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                            title="Download Bank Excel (97-2003)"
+                            onClick={() => handleDownloadLoanXLS(loan)}
+                          >
+                            <FileSpreadsheet className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </td>
                       <td className="py-2 px-4">
                         <div className="flex items-center gap-1">
                           <Button size="sm" variant="outline" onClick={() => editLoan(loan)} className="text-xs">
@@ -786,7 +818,7 @@ const LoansAndBonusesTab = () => {
                   ))}
                   {loans.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="text-center text-muted-foreground py-4 text-xs">
+                      <td colSpan={10} className="text-center text-muted-foreground py-4 text-xs">
                         No loans found
                       </td>
                     </tr>
