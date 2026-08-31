@@ -46,7 +46,17 @@ export const CATEGORY_LABELS: Record<string, string> = {
   salary_expense: 'Salary Expenses',
   expense: 'Other Expenses',
   liability: 'Liabilities',
+  debtor: 'Debtors',
 };
+
+/** Fallback for any SimplePay category we have no explicit label for. */
+function titleCaseCategory(cat: string): string {
+  return cat
+    .split('_')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
 
 /** SimplePay returns each amount as a single-entry dict keyed by cost centre. */
 export function getAmount(entry: AccountingEntry): number {
@@ -82,7 +92,7 @@ export function buildRows(entries: AccountingEntry[]): TableRow[] {
     const catEntries = groups[cat];
     const catTotal = catEntries.reduce((s, e) => s + getAmount(e), 0);
     rows.push({
-      label: CATEGORY_LABELS[cat] || cat,
+      label: CATEGORY_LABELS[cat] || titleCaseCategory(cat),
       amount: catTotal,
       isCategory: true,
     });
