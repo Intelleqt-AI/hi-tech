@@ -820,6 +820,11 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                 </div>
               </div>
             </div>
+            <p className="mt-4 text-sm text-muted-foreground">
+              {hasSimplePayAccounting(printBatch.factory)
+                ? 'No separate SimplePay accounting run exists for this period, so the accounting report could not be shown.'
+                : 'This company is not linked to SimplePay, so no accounting report is available.'}
+            </p>
             </>)}
             {printAccounting && (
               <AccountingSummaryPrint
