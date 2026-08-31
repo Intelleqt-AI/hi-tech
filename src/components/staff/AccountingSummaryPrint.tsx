@@ -12,7 +12,19 @@ interface AccountingSummaryPrintProps {
   data: AccountingData;
   /** The app's own Total Net Pay for this batch, for reconciliation. */
   appTotalNet: number;
+  status?: string | null;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
 }
+
+const fmtApprovedAt = (value: string) =>
+  new Date(value).toLocaleString('en-ZA', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
 const Cell = ({ row }: { row: TableRow | undefined }) => {
   if (!row) {
@@ -34,7 +46,13 @@ const Cell = ({ row }: { row: TableRow | undefined }) => {
  * SimplePay's Accounting Report, laid out to read the same as the report in
  * SimplePay itself. Rendered inside the print-only payroll summary overlay.
  */
-const AccountingSummaryPrint = ({ data, appTotalNet }: AccountingSummaryPrintProps) => {
+const AccountingSummaryPrint = ({
+  data,
+  appTotalNet,
+  status,
+  approvedBy,
+  approvedAt,
+}: AccountingSummaryPrintProps) => {
   const debitRows = buildRows(data.debit);
   const creditRows = buildRows(data.credit);
   const maxRows = Math.max(debitRows.length, creditRows.length);
@@ -50,6 +68,29 @@ const AccountingSummaryPrint = ({ data, appTotalNet }: AccountingSummaryPrintPro
 
   return (
     <div className="border rounded-lg p-6 text-sm break-inside-avoid">
+      {(status || approvedBy || approvedAt) && (
+        <div className="space-y-2 mb-5 pb-4 border-b text-base">
+          {status && (
+            <div className="flex justify-between">
+              <span>Status:</span>
+              <span className="capitalize">{status}</span>
+            </div>
+          )}
+          {approvedBy && (
+            <div className="flex justify-between">
+              <span>Approved by:</span>
+              <span>{approvedBy}</span>
+            </div>
+          )}
+          {approvedAt && (
+            <div className="flex justify-between">
+              <span>Approved on:</span>
+              <span>{fmtApprovedAt(approvedAt)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       <h3 className="text-center text-lg font-bold mb-4">{data.company_name}</h3>
 
       <p className="text-xs">Accounting info for payment run ending {data.period_end_date}</p>

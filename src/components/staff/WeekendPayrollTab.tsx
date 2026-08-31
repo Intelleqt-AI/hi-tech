@@ -831,6 +831,9 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
               <AccountingSummaryPrint
                 data={printAccounting}
                 appTotalNet={printBatch.total_net_pay || 0}
+                status={printBatch.status}
+                approvedBy={printBatch.approved_by}
+                approvedAt={printBatch.approved_at}
               />
             )}
           </div>
