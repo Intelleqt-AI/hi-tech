@@ -1,75 +1,9 @@
 import jsPDF from 'jspdf';
+import { buildRows, fmtR, sumEntries } from './accountingRows';
+import type { AccountingData, AccountingEntry } from './accountingRows';
 
-export interface AccountingEntry {
-  category: string;
-  line_item: string;
-  label: string;
-  amount: Record<string, number>;
-}
-
-export interface AccountingData {
-  company_name: string;
-  period_end_date: string;
-  pay_frequency: string;
-  payslip_count: number;
-  debit: AccountingEntry[];
-  credit: AccountingEntry[];
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  salary_expense: 'Salary Expenses',
-  expense: 'Other Expenses',
-  liability: 'Liabilities',
-};
-
-interface TableRow {
-  label: string;
-  amount: number | null;
-  isCategory: boolean;
-}
-
-function getAmount(entry: AccountingEntry): number {
-  const vals = Object.values(entry.amount);
-  return vals.length > 0 ? vals[0] : 0;
-}
-
-function fmtR(amount: number): string {
-  return (
-    'R ' +
-    amount.toLocaleString('en-ZA', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-  );
-}
-
-function buildRows(entries: AccountingEntry[]): TableRow[] {
-  const order: string[] = [];
-  const groups: Record<string, AccountingEntry[]> = {};
-
-  for (const entry of entries) {
-    if (!groups[entry.category]) {
-      groups[entry.category] = [];
-      order.push(entry.category);
-    }
-    groups[entry.category].push(entry);
-  }
-
-  const rows: TableRow[] = [];
-  for (const cat of order) {
-    const catEntries = groups[cat];
-    const catTotal = catEntries.reduce((s, e) => s + getAmount(e), 0);
-    rows.push({
-      label: CATEGORY_LABELS[cat] || cat,
-      amount: catTotal,
-      isCategory: true,
-    });
-    for (const e of catEntries) {
-      rows.push({ label: e.label, amount: getAmount(e), isCategory: false });
-    }
-  }
-  return rows;
-}
+// Re-exported so existing importers of this module keep working.
+export type { AccountingData, AccountingEntry };
 
 function drawCell(
   pdf: jsPDF,
@@ -193,8 +127,8 @@ export function generateAccountingPDF(data: AccountingData): void {
   // ── Gap then totals row ────────────────────────────────────────
   y += 3;
 
-  const debitTotal = data.debit.reduce((s, e) => s + getAmount(e), 0);
-  const creditTotal = data.credit.reduce((s, e) => s + getAmount(e), 0);
+  const debitTotal = sumEntries(data.debit);
+  const creditTotal = sumEntries(data.credit);
 
   drawCell(pdf, leftX, y, colW, rowH, 'Total Debits', fmtR(debitTotal), false);
   drawCell(pdf, rightX, y, colW, rowH, 'Total Credits', fmtR(creditTotal), false);

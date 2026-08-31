@@ -15,6 +15,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { generatePayrollPDF, PayrollSummaryData } from '@/utils/payrollPDF';
 import { fetchEntries, downloadFile, deleteData, fetchData } from '@/lib/Api';
 import { generateAccountingPDF } from '@/lib/accountingPDF';
+import { hasSimplePayAccounting, type AccountingData } from '@/lib/accountingRows';
+import AccountingSummaryPrint from '@/components/staff/AccountingSummaryPrint';
 import { useQuery } from '@tanstack/react-query';
 import useFetch from '@/hooks/useFetch';
 import CommentsModal from '@/components/CommentsModal';
@@ -86,6 +88,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [printBatch, setPrintBatch] = useState<any>(null);
+  const [printAccounting, setPrintAccounting] = useState<AccountingData | null>(null);
 
   const currentPeriod = calculatePayPeriods();
 
@@ -414,11 +417,27 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     });
   };
 
-  const handlePrintBatch = (payroll: any) => {
+  const handlePrintBatch = async (payroll: any) => {
+    // Pull the SimplePay accounting report so it prints on the same sheet as
+    // the payroll summary. A failure must never block the print — the summary
+    // still goes out, just without the accounting section.
+    let accounting: AccountingData | null = null;
+    if (hasSimplePayAccounting(payroll.factory)) {
+      try {
+        accounting = await fetchData(`atg/attendance/payroll-accounting-info/?batch_id=${payroll.id}`);
+      } catch {
+        // Expected whenever SimplePay has no run for this period (weekend runs
+        // currently have none). Print the summary without the section rather
+        // than interrupting with a toast behind the print dialog.
+        console.warn(`No SimplePay accounting report for batch ${payroll.id}`);
+      }
+    }
+    setPrintAccounting(accounting);
     setPrintBatch(payroll);
     setTimeout(() => {
       window.print();
       setPrintBatch(null);
+      setPrintAccounting(null);
     }, 100);
   };
 
@@ -766,6 +785,10 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
         const fmt = (n: number) => `R ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         return (
           <div className="hidden print:block fixed inset-0 bg-white z-50 p-8">
+            {/* Payroll Info is the fallback only. When the SimplePay accounting
+                report is available it replaces this card, so the printed sheet
+                reads exactly like the report in SimplePay. */}
+            {!printAccounting && (<>
             <h2 className="text-2xl font-bold mb-1">Run Payroll ({printBatch.run_type === 'weekend' ? 'Weekend' : 'General'})</h2>
             <p className="text-base text-muted-foreground mb-6">{printBatch.start_date} to {printBatch.end_date}</p>
             <div className="border rounded-lg">
@@ -797,6 +820,13 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                 </div>
               </div>
             </div>
+            </>)}
+            {printAccounting && (
+              <AccountingSummaryPrint
+                data={printAccounting}
+                appTotalNet={printBatch.total_net_pay || 0}
+              />
+            )}
           </div>
         );
       })()}
