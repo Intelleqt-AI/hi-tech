@@ -52,7 +52,9 @@ interface Slip {
   net_salary: string;
 }
 
-const slipToRow = (slip: Slip) => [
+const LOAN_COLUMN = 'Loan Deduction';
+
+const slipToRow = (slip: Slip, withLoans: boolean) => [
   slip.staff_name,
   slip.staff_clock_number,
   slip.staff_department?.replace('_', ' '),
@@ -64,17 +66,18 @@ const slipToRow = (slip: Slip) => [
   slip.paid_hours,
   slip.bonus_added,
   slip.other_deductions,
-  slip.loan_deduction,
+  ...(withLoans ? [slip.loan_deduction] : []),
   slip.gross_salary,
   slip.net_salary,
 ];
 
-const toCSV = (rows: (string | number | null | undefined)[][]) => {
+const toCSV = (rows: (string | number | null | undefined)[][], withLoans: boolean) => {
   const escape = (v: string | number | null | undefined) => {
     const s = String(v ?? '');
     return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  return [CSV_HEADERS, ...rows].map(r => r.map(escape).join(',')).join('\n');
+  const headers = withLoans ? CSV_HEADERS : CSV_HEADERS.filter(h => h !== LOAN_COLUMN);
+  return [headers, ...rows].map(r => r.map(escape).join(',')).join('\n');
 };
 
 const PayrollBatchSlips = () => {
@@ -89,6 +92,8 @@ const PayrollBatchSlips = () => {
   const slips = data?.results ?? [];
   const totalCount = data?.count ?? 0;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  // Weekend runs never carry loans, so the column is dropped for them.
+  const showLoans = data?.run_type !== 'weekend';
 
   const fmt = (val: string | number) =>
     `R ${parseFloat(val as string).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -97,8 +102,9 @@ const PayrollBatchSlips = () => {
     setIsDownloading(true);
     try {
       const allData = await fetchData(`staff/payroll-batches/${id}/slips/?page=1&page_size=${totalCount || 9999}`);
-      const rows = ((allData?.results ?? []) as Slip[]).map(slipToRow);
-      const csv = toCSV(rows);
+      const withLoans = allData?.run_type !== 'weekend';
+      const rows = ((allData?.results ?? []) as Slip[]).map(s => slipToRow(s, withLoans));
+      const csv = toCSV(rows, withLoans);
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -166,7 +172,9 @@ const PayrollBatchSlips = () => {
                 <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Paid Hrs</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Bonus</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Deductions</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Loans</th>
+                {showLoans && (
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Loans</th>
+                )}
                 <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Gross</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Net Salary</th>
               </tr>
@@ -175,7 +183,7 @@ const PayrollBatchSlips = () => {
               {isLoading
                 ? Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="border-b border-gray-100">
-                      {Array.from({ length: 14 }).map((_, j) => (
+                      {Array.from({ length: showLoans ? 14 : 13 }).map((_, j) => (
                         <td key={j} className="py-2 px-4">
                           <Skeleton className="h-4 w-20" />
                         </td>
@@ -201,7 +209,9 @@ const PayrollBatchSlips = () => {
                       <td className="py-2 px-4 text-xs">{slip.paid_hours}h</td>
                       <td className="py-2 px-4 text-xs">{fmt(slip.bonus_added)}</td>
                       <td className="py-2 px-4 text-xs text-red-600">{fmt(slip.other_deductions)}</td>
-                      <td className="py-2 px-4 text-xs text-blue-600">{fmt(slip.loan_deduction)}</td>
+                      {showLoans && (
+                        <td className="py-2 px-4 text-xs text-blue-600">{fmt(slip.loan_deduction)}</td>
+                      )}
                       <td className="py-2 px-4 text-xs">{fmt(slip.gross_salary)}</td>
                       <td className="py-2 px-4 text-xs font-semibold text-green-600">{fmt(slip.net_salary)}</td>
                     </tr>

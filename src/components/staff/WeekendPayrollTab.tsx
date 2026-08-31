@@ -814,7 +814,6 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                   <div className="flex justify-between"><span>Pay Date:</span><span>{printBatch.payment_date ? fmtDate(printBatch.payment_date) : '—'}</span></div>
                   <div className="flex justify-between"><span>Employees:</span><span>{printBatch.total_employees || 0}</span></div>
                   <div className="flex justify-between"><span>Deductions:</span><span>{fmt(printBatch.total_deductions || 0)}</span></div>
-                  <div className="flex justify-between"><span>Loans:</span><span>{fmt(printBatch.total_loans || 0)}</span></div>
                   <div className="flex justify-between text-muted-foreground"><span>Net Pay to Bank Account:</span><span>{fmt(printBatch.net_pay_bank || 0)}</span></div>
                   <div className="flex justify-between text-muted-foreground"><span>Net Pay to Cell Phone:</span><span>{fmt(printBatch.net_pay_cell || 0)}</span></div>
                   <div className="flex justify-between font-semibold text-lg pt-1 border-t"><span>Total Net Pay:</span><span className="text-green-600">{fmt(printBatch.total_net_pay || 0)}</span></div>
