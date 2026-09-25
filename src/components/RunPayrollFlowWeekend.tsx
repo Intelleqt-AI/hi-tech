@@ -48,6 +48,9 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
     end_date: '',
     pay_date: '',
   });
+  // Off-cycle run (e.g. a public holiday on a weekday): pay every day in the
+  // selected period instead of only Fri/Sat/Sun.
+  const [includeAllDays, setIncludeAllDays] = useState(false);
   const [payrollId, setPayrollId] = useState<string>(null);
   const [finalizing, setFinalizing] = useState(false);
   const [finalized, setFinalized] = useState(false);
@@ -55,7 +58,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
   const [accountingLoading, setAccountingLoading] = useState(false);
 
   const { data: wageReportData, isLoading: wageReportLoading } = useFetch(
-    `/atg/attendance/staff-weekend-wage-report/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod?.start_date}&end_date=${payPeriod?.end_date}`,
+    `/atg/attendance/staff-weekend-wage-report/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod?.start_date}&end_date=${payPeriod?.end_date}${includeAllDays ? '&include_all_days=true' : ''}`,
     {
       enabled: !!payPeriod?.start_date && !!payPeriod?.end_date,
     },
@@ -63,7 +66,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
 
   const payrollQuery =
     currentStep >= 3 && selectedEmployees.length > 0
-      ? `/atg/attendance/staff-weekend-payroll-details/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod.start_date}&end_date=${payPeriod.end_date}&staff_ids=${selectedEmployees.map((e: any) => e.id).join(',')}`
+      ? `/atg/attendance/staff-weekend-payroll-details/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod.start_date}&end_date=${payPeriod.end_date}&staff_ids=${selectedEmployees.map((e: any) => e.id).join(',')}${includeAllDays ? '&include_all_days=true' : ''}`
       : '';
 
   const { data: payrollDetails, isLoading: payrollLoading } = useFetch(payrollQuery, { enabled: !!payrollQuery });
@@ -294,6 +297,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
                     setSelectedPeriodId(value);
                     if (value === 'custom') {
                       setPayPeriod({ start_date: '', end_date: '', pay_date: '' });
+                      setIncludeAllDays(false);
                     } else {
                       const period = availablePeriods.find(p => p.id === value);
                       if (period) {
@@ -363,6 +367,23 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
                           setPayPeriod({ start_date: payPeriod.start_date, end_date: end, pay_date: payDate });
                         }}
                       />
+                    </div>
+                    <div className="col-span-2 flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
+                      <input
+                        id="include-all-days"
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 cursor-pointer"
+                        checked={includeAllDays}
+                        onChange={e => setIncludeAllDays(e.target.checked)}
+                      />
+                      <Label htmlFor="include-all-days" className="cursor-pointer text-xs font-normal leading-relaxed">
+                        <span className="font-medium">Include all days (public holiday / off-cycle run)</span>
+                        <span className="block text-muted-foreground mt-0.5">
+                          Normally only Friday, Saturday and Sunday hours are paid. Tick this to pay every
+                          day in the period at the normal rate &mdash; use it for a public holiday that falls
+                          on a weekday. These hours are still deducted from the next fortnightly run.
+                        </span>
+                      </Label>
                     </div>
                   </div>
                 )}
