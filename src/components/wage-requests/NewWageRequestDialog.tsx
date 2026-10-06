@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -264,7 +264,7 @@ const NewWageRequestDialog: React.FC<Props> = ({ open, onOpenChange, paymentType
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6">
+          <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="flex items-center gap-2">
               New {label} Request
               <Badge variant="outline" className="font-normal">
@@ -300,7 +300,7 @@ const NewWageRequestDialog: React.FC<Props> = ({ open, onOpenChange, paymentType
                   const allSelected = selectedInFactory === list.length && list.length > 0;
                   return (
                     <div key={factory}>
-                      <div className="sticky top-0 bg-muted/60 backdrop-blur px-3 py-1.5 flex items-center justify-between text-xs font-medium">
+                      <div className="sticky top-0 z-10 bg-muted/60 backdrop-blur border-b border-border px-3 py-1.5 flex items-center justify-between text-xs font-medium">
                         <div className="flex items-center gap-2">
                           <Checkbox
                             checked={allSelected}
@@ -396,14 +396,14 @@ const NewWageRequestDialog: React.FC<Props> = ({ open, onOpenChange, paymentType
 
               <Separator />
 
-              <div className="flex-1 min-h-0 overflow-y-auto border rounded-md">
+              <div className="max-h-[40vh] md:max-h-none md:flex-1 min-h-0 overflow-y-auto border rounded-md">
                 {totalSelected === 0 ? (
                   <div className="p-4 text-sm text-muted-foreground text-center">
                     Pick staff on the left to build the request.
                   </div>
                 ) : (
                   <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-muted/60 backdrop-blur">
+                    <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur border-b border-border">
                       <tr>
                         <th className="text-left px-3 py-2">Staff</th>
                         <th className="text-left px-3 py-2">Factory</th>
@@ -414,16 +414,17 @@ const NewWageRequestDialog: React.FC<Props> = ({ open, onOpenChange, paymentType
                     <tbody>
                       {Object.values(selected).map((r) => (
                         <tr key={r.staff_id} className="border-t">
-                          <td className="px-3 py-1.5">{r.display}</td>
-                          <td className="px-3 py-1.5 text-muted-foreground uppercase text-xs">
+                          <td className="px-3 py-2">{r.display}</td>
+                          <td className="px-3 py-2 text-muted-foreground uppercase text-xs">
                             {r.factory}
                           </td>
-                          <td className="px-3 py-1.5 text-right">
+                          <td className="px-3 py-2 text-right">
                             <div className="flex items-center justify-end gap-2">
                               {r.overridden && (
                                 <button
+                                  type="button"
                                   onClick={() => clearOverride(r.staff_id)}
-                                  className="text-[10px] text-primary"
+                                  className="text-xs text-primary hover:underline focus:outline-none focus:underline"
                                   title="Reset to default"
                                 >
                                   reset
@@ -435,14 +436,16 @@ const NewWageRequestDialog: React.FC<Props> = ({ open, onOpenChange, paymentType
                                 step="0.01"
                                 value={r.amount}
                                 onChange={(e) => overrideRow(r.staff_id, e.target.value)}
-                                className={`w-28 h-8 text-right ${r.overridden ? 'border-amber-500' : ''}`}
+                                className={`w-28 h-8 text-right ${r.overridden ? 'border-amber-500 ring-1 ring-amber-200' : ''}`}
                               />
                             </div>
                           </td>
-                          <td>
+                          <td className="px-2 py-2">
                             <button
+                              type="button"
+                              aria-label="Remove"
                               onClick={() => removeRow(r.staff_id)}
-                              className="text-muted-foreground hover:text-destructive"
+                              className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-muted"
                               title="Remove"
                             >
                               <X className="h-4 w-4" />
@@ -457,19 +460,19 @@ const NewWageRequestDialog: React.FC<Props> = ({ open, onOpenChange, paymentType
             </div>
           </div>
 
-          <DialogFooter className="px-6 pb-6 pt-2 flex items-center justify-between border-t">
-            <div className="text-sm text-muted-foreground">
+          <div className="border-t px-6 pb-6 pt-3 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="text-[11px] text-muted-foreground">
               {totalSelected} staff · <span className="font-medium text-foreground">R{totalRand.toFixed(2)}</span>
             </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" size="sm" className="h-9" onClick={() => onOpenChange(false)} disabled={submitting}>
                 Cancel
               </Button>
-              <Button onClick={submit} disabled={submitting}>
+              <Button size="sm" className="h-9" onClick={submit} disabled={submitting}>
                 {submitting ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting…</>) : 'Submit for approval'}
               </Button>
             </div>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
