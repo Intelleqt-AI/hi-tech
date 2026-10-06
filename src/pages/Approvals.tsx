@@ -25,6 +25,7 @@ interface ApprovalRequest {
   loan_detail: any;
   bonus_detail: any;
   payroll_batch_detail: any;
+  wage_request_batch_detail: any;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +35,15 @@ const TYPE_LABELS: Record<string, string> = {
   bonus: 'Bonus',
   general_payroll: 'General Payroll',
   weekend_payroll: 'Weekend Payroll',
+  wage_request: 'Wage Request',
+};
+
+const WAGE_SUBTYPE_LABELS: Record<string, string> = {
+  bonus: 'Bonus',
+  transport: 'Transport',
+  airtime: 'Airtime',
+  fuel: 'Fuel',
+  other: 'Other',
 };
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -69,7 +79,7 @@ const ApprovalCard = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const detail = approval.loan_detail || approval.bonus_detail || approval.payroll_batch_detail;
+  const detail = approval.loan_detail || approval.bonus_detail || approval.payroll_batch_detail || approval.wage_request_batch_detail;
 
   const threadLabel = `${TYPE_LABELS[approval.request_type] ?? approval.request_type} — ${approval.submitted_by_name || approval.submitted_by_email}`;
 
@@ -78,7 +88,12 @@ const ApprovalCard = ({
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-semibold text-sm">{TYPE_LABELS[approval.request_type] ?? approval.request_type}</span>
+            <span className="font-semibold text-sm">
+              {TYPE_LABELS[approval.request_type] ?? approval.request_type}
+              {approval.wage_request_batch_detail && (
+                <> · {WAGE_SUBTYPE_LABELS[approval.wage_request_batch_detail.payment_type] ?? approval.wage_request_batch_detail.payment_type}</>
+              )}
+            </span>
             <StatusBadge status={approval.status} />
           </div>
           <p className="text-xs text-muted-foreground">
@@ -195,6 +210,38 @@ const ApprovalCard = ({
               </div>
             </>
           )}
+          {approval.wage_request_batch_detail && (
+            <>
+              <DetailRow label="Payment" value={detail.payment_type_display} />
+              <DetailRow label="Staff count" value={detail.line_count} />
+              <DetailRow label="Total" value={`R${parseFloat(detail.total_amount).toFixed(2)}`} />
+              {detail.target_payroll && (
+                <DetailRow label="Target payroll" value={detail.target_payroll} />
+              )}
+              {detail.bonus_reason && (
+                <DetailRow label="Bonus reason" value={detail.bonus_reason.replace(/_/g, ' ')} />
+              )}
+              {detail.custom_reason && (
+                <DetailRow label="Reason" value={detail.custom_reason} />
+              )}
+              {approval.status === 'approved' && (
+                <div className="pt-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1.5 w-full"
+                    onClick={() => downloadFile(
+                      `staff/wage-requests/${detail.id}/export-csv/`,
+                      `wage_${detail.payment_type}_${detail.id}.xls`
+                    )}
+                  >
+                    <FileDown className="h-3.5 w-3.5" />
+                    Download bank CSV
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -296,9 +343,10 @@ const ApprovalsPage = () => {
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="loan">Loan</SelectItem>
-            <SelectItem value="bonus">Bonus</SelectItem>
+            <SelectItem value="bonus">Bonus (legacy)</SelectItem>
             <SelectItem value="general_payroll">General Payroll</SelectItem>
             <SelectItem value="weekend_payroll">Weekend Payroll</SelectItem>
+            <SelectItem value="wage_request">Wage Request</SelectItem>
           </SelectContent>
         </Select>
       </div>

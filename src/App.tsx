@@ -17,6 +17,7 @@ import LoansAndBonusesTab from './components/staff/LoansAndBonusesTab';
 import StaffDirectory from './components/staff/StaffDirectory';
 import PayrollBatchSlips from './pages/PayrollBatchSlips';
 import ApprovalsPage from './pages/Approvals';
+import WageRequestsPage from './pages/WageRequests';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -121,6 +122,14 @@ const AppRoutes = () => {
         <Route path="/payroll/weekend" element={<WeekendPayroll />} />
         <Route path="/staff/payroll-batches/:id/slips" element={<PayrollBatchSlips />} />
         <Route path="/approvals" element={<ApprovalsPage />} />
+        <Route
+          path="/wage-requests"
+          element={
+            <ViewerRoute>
+              <WageRequestsPage />
+            </ViewerRoute>
+          }
+        />
       </Route>
 
       {/* 404 */}
