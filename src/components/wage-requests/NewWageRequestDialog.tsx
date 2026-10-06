@@ -209,6 +209,13 @@ const NewWageRequestDialog: React.FC<Props> = ({ open, onOpenChange, paymentType
   };
 
   const submit = async () => {
+    // Hard-guard against double-submit: a fast double-click on the confirm
+    // dialog's Approve button, or a rapid Enter press, could enter submit()
+    // twice before setSubmitting(true) propagates — creating two batches
+    // for the same payload. Early-return here is the single source of
+    // truth; the disabled props below are UX reinforcement only.
+    if (submitting) return;
+
     const err = canSubmit();
     if (err) {
       toast({ title: 'Cannot submit', description: err, variant: 'destructive' });
@@ -478,8 +485,10 @@ const NewWageRequestDialog: React.FC<Props> = ({ open, onOpenChange, paymentType
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Back to edit</AlertDialogCancel>
-            <AlertDialogAction onClick={submit}>Submit for approval</AlertDialogAction>
+            <AlertDialogCancel disabled={submitting}>Back to edit</AlertDialogCancel>
+            <AlertDialogAction onClick={submit} disabled={submitting}>
+              {submitting ? 'Submitting…' : 'Submit for approval'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
